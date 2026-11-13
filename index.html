@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>워들 대결</title>
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<style>
+:root{
+  --bg:#121417; --panel:#1b1e23; --panel2:#23272e; --line:#343a43; --text:#e8eaed; --dim:#8b929c;
+  --g:#3fa660; --y:#c9a227; --b:#3a3f47; --accent:#5b8def; --red:#e5534b;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+  font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif}
+button{font:inherit;color:inherit;cursor:pointer;touch-action:manipulation}
+input{font:inherit}
+.hidden{display:none!important}
+
+/* ---------- 입장 화면 ---------- */
+#entry{min-height:100%;display:flex;align-items:center;justify-content:center;padding:20px}
+.entry-card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:28px;width:100%;max-width:380px}
+.logo{display:flex;gap:4px;justify-content:center;margin-bottom:6px}
+.logo span{width:38px;height:38px;display:grid;place-items:center;font-weight:800;font-size:20px;border-radius:6px}
+.entry-card h1{margin:4px 0 2px;text-align:center;font-size:22px}
+.entry-card p.sub{margin:0 0 22px;text-align:center;color:var(--dim);font-size:14px}
+label.f{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
+.inp{width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--text);outline:none}
+.inp:focus{border-color:var(--accent)}
+.btn{padding:11px 14px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);font-weight:600}
+.btn:hover{border-color:#4a515c}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.row{display:flex;gap:8px}
+.row .inp{flex:1}
+.divider{display:flex;align-items:center;gap:10px;color:var(--dim);font-size:12px;margin:18px 0 4px}
+.divider:before,.divider:after{content:"";flex:1;height:1px;background:var(--line)}
+.entry-msg{min-height:20px;margin-top:14px;font-size:13px;color:var(--dim);text-align:center}
+
+/* ---------- 게임 화면 ---------- */
+#game{height:100%;display:flex;flex-direction:column}
+header{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--panel);flex-wrap:wrap}
+header .title{font-weight:800;font-size:18px;margin-right:6px}
+.chip{font-size:13px;padding:5px 10px;border-radius:999px;background:var(--panel2);border:1px solid var(--line);color:var(--dim)}
+.chip b{color:var(--text);letter-spacing:1px}
+.spacer{flex:1}
+#timer{font-variant-numeric:tabular-nums;font-weight:700}
+#timer.warn{color:var(--red);border-color:var(--red)}
+.layout{flex:1;min-height:0;display:grid;grid-template-columns:minmax(220px,1fr) minmax(330px,540px) 310px;gap:0}
+.col{min-height:0;overflow:auto;padding:16px}
+.col.side{border-left:1px solid var(--line);background:var(--panel);display:flex;flex-direction:column;padding:0}
+.col.opps{border-right:1px solid var(--line)}
+.sec-title{font-size:12px;font-weight:700;color:var(--dim);letter-spacing:.5px;text-transform:uppercase;margin:0 0 10px}
+
+/* 상대 보드 */
+.opp{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:10px}
+.opp.me{border-color:#3b4a66}
+.opp-head{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:14px}
+.opp-head .nm{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.opp-head .sc{margin-left:auto;color:var(--dim);font-size:13px;white-space:nowrap}
+.badge{font-size:11px;padding:2px 7px;border-radius:999px;background:var(--panel2);color:var(--dim);white-space:nowrap}
+.badge.win{background:var(--g);color:#fff}
+.badge.fail{background:#5a2a2a;color:#ffb4b0}
+.badge.host{background:#2b3a5c;color:#a9c3ff}
+.mini{display:grid;gap:3px;width:max-content}
+.mini .mr{display:grid;gap:3px}
+.mini .mc{width:16px;height:16px;border-radius:3px;background:var(--panel2);border:1px solid var(--line);font-size:10px;font-weight:700;display:grid;place-items:center;text-transform:uppercase}
+.mini .mc.g{background:var(--g);border-color:var(--g)}
+.mini .mc.y{background:var(--y);border-color:var(--y)}
+.mini .mc.b{background:var(--b);border-color:var(--b)}
+.mini .mc.t{border-color:#8b929c;background:#2c3138}
+.mini.big .mc{width:22px;height:22px;font-size:12px}
+
+/* 내 보드 */
+.center{display:flex;flex-direction:column;align-items:center}
+#board{display:grid;gap:6px;margin:6px 0 16px}
+.brow{display:grid;gap:6px}
+.tile{width:var(--ts);height:var(--ts);border:2px solid var(--line);border-radius:6px;display:grid;place-items:center;
+  font-size:calc(var(--ts) * .5);font-weight:800;text-transform:uppercase;user-select:none}
+.tile.filled{border-color:#6b7280;animation:pop .1s}
+.tile.g{background:var(--g);border-color:var(--g)}
+.tile.y{background:var(--y);border-color:var(--y)}
+.tile.b{background:var(--b);border-color:var(--b)}
+.tile.reveal{animation:flip .45s ease both}
+.brow.shake{animation:shake .4s}
+@keyframes pop{50%{transform:scale(1.08)}}
+@keyframes flip{0%{transform:rotateX(90deg)}100%{transform:rotateX(0)}}
+@keyframes shake{20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
+
+#kb{width:100%;max-width:520px;user-select:none}
+.kr{display:flex;gap:5px;justify-content:center;margin-bottom:6px}
+.key{flex:1;max-width:44px;height:52px;border:none;border-radius:6px;background:#4b525c;font-weight:700;font-size:15px;text-transform:uppercase}
+.key.wide{max-width:70px;flex:1.5;font-size:12px}
+.key.g{background:var(--g)} .key.y{background:var(--y)} .key.b{background:#2a2e34;color:#6b7280}
+.key:active{filter:brightness(1.2)}
+
+/* 대기/결과 패널 */
+.panel{width:100%;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:14px}
+.panel h2{margin:0 0 12px;font-size:18px}
+.opt{margin-bottom:14px}
+.opt .lb{font-size:13px;color:var(--dim);margin-bottom:6px}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{padding:8px 12px;border-radius:9px;border:1px solid var(--line);background:var(--panel2);font-size:14px}
+.seg button.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}
+.seg button:disabled{cursor:default}
+.seg button:disabled:not(.on){opacity:.5}
+.hint{font-size:13px;color:var(--dim);margin:6px 0 0}
+.answer{font-size:30px;font-weight:800;letter-spacing:6px;text-transform:uppercase;margin:2px 0 4px}
+.answer a{color:var(--accent);font-size:13px;letter-spacing:0;font-weight:600;margin-left:8px;text-decoration:none}
+table.rank{width:100%;border-collapse:collapse;margin:12px 0;font-size:14px}
+table.rank td,table.rank th{padding:7px 6px;border-bottom:1px solid var(--line);text-align:left}
+table.rank th{color:var(--dim);font-weight:600;font-size:12px}
+.plus{color:var(--g);font-weight:700}
+.reveal-boards{display:flex;flex-wrap:wrap;gap:14px;margin-top:6px}
+.reveal-boards .rb .n{font-size:12px;color:var(--dim);margin-bottom:4px}
+
+/* 채팅 */
+.chat-head{padding:12px 14px;border-bottom:1px solid var(--line)}
+#players{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+#players .pp{font-size:12px;padding:3px 8px;border-radius:999px;background:var(--panel2);border:1px solid var(--line)}
+#chatLog{flex:1;overflow:auto;padding:10px 14px;font-size:14px;min-height:120px}
+.cm{margin-bottom:7px;line-height:1.4;word-break:break-word}
+.cm .who{font-weight:700;margin-right:6px}
+.cm.sys{color:var(--dim);font-size:12.5px}
+.chat-in{display:flex;gap:6px;padding:10px;border-top:1px solid var(--line)}
+.chat-in .inp{padding:9px 10px}
+
+#toast{position:fixed;left:50%;top:70px;transform:translateX(-50%);background:#f2f3f5;color:#111;padding:10px 16px;border-radius:10px;
+  font-weight:600;font-size:14px;z-index:50;opacity:0;pointer-events:none;transition:opacity .2s}
+#toast.show{opacity:1}
+
+@media (max-width:1000px){
+  .layout{grid-template-columns:1fr;display:flex;flex-direction:column;overflow:auto}
+  .col{overflow:visible;flex-shrink:0}
+  header{padding:8px 12px;gap:6px}
+  header .title{font-size:16px}
+  .key{height:48px}
+  .col.opps{border-right:none;order:2;display:flex;gap:10px;overflow-x:auto;padding-top:0}
+  .col.opps .sec-title{display:none}
+  .col.opps .opp{flex:0 0 auto;margin:0}
+  .col.center{order:1}
+  .col.side{order:3;border-left:none;border-top:1px solid var(--line);min-height:320px;max-height:420px}
+}
+</style>
+</head>
+<body>
+
+<!-- 입장 화면 -->
+<div id="entry">
+  <div class="entry-card">
+    <div class="logo">
+      <span style="background:var(--g)">W</span><span style="background:var(--y)">O</span><span style="background:var(--b)">R</span><span style="background:var(--g)">D</span><span style="background:var(--y)">S</span>
+    </div>
+    <h1>워들 대결</h1>
+    <p class="sub">친구들과 같은 단어를 누가 먼저 맞히나 겨뤄요</p>
+
+    <label class="f" for="nameInp">닉네임</label>
+    <input id="nameInp" class="inp" maxlength="12" placeholder="닉네임 입력">
+
+    <div style="margin-top:16px">
+      <button id="createBtn" class="btn primary" style="width:100%">새 방 만들기</button>
+    </div>
+    <div class="divider">또는 방 코드로 참가</div>
+    <div class="row" style="margin-top:8px">
+      <input id="codeInp" class="inp" maxlength="5" placeholder="방 코드 (예: K7Q2M)" style="text-transform:uppercase">
+      <button id="joinBtn" class="btn">참가</button>
+    </div>
+    <div id="entryMsg" class="entry-msg"></div>
+  </div>
+</div>
+
+<!-- 게임 화면 -->
+<div id="game" class="hidden">
+  <header>
+    <span class="title">워들 대결</span>
+    <span class="chip">방 코드 <b id="roomCode">-----</b></span>
+    <button id="copyBtn" class="btn" style="padding:5px 10px;font-size:13px">초대 링크 복사</button>
+    <span class="spacer"></span>
+    <span id="dictChip" class="chip">사전 불러오는 중…</span>
+    <span id="roundChip" class="chip hidden"></span>
+    <span id="timer" class="chip hidden"></span>
+  </header>
+  <div class="layout">
+    <div class="col opps">
+      <div class="sec-title">상대 진행 상황</div>
+      <div id="opps"></div>
+    </div>
+    <div class="col center">
+      <div id="panel" class="panel hidden"></div>
+      <div id="playArea" class="center" style="width:100%">
+        <div id="board"></div>
+        <div id="kb"></div>
+      </div>
+    </div>
+    <div class="col side">
+      <div class="chat-head">
+        <div class="sec-title" style="margin:0">채팅</div>
+        <div id="players"></div>
+      </div>
+      <div id="chatLog"></div>
+      <form id="chatForm" class="chat-in" autocomplete="off">
+        <input id="chatInp" class="inp" maxlength="200" placeholder="메시지 입력… (Enter로 전송)" style="min-width:0">
+        <button class="btn primary" style="padding:9px 12px;white-space:nowrap">전송</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* ================= 단어 ================= */
+const ANSWERS = {"5":["about","above","actor","adult","after","again","agent","agree","ahead","alarm","album","alert","alive","allow","alone","along","angel","anger","angle","angry","apple","apply","arena","argue","arise","armor","array","arrow","aside","asset","audio","avoid","award","aware","badge","baker","basic","beach","beard","beast","begin","being","below","bench","berry","birth","black","blade","blame","blank","blast","blend","bless","blind","block","blood","bloom","board","boast","bonus","boost","booth","brain","brand","brave","bread","break","brick","bride","brief","bring","broad","brown","brush","build","bunch","burst","buyer","cabin","cable","camel","candy","cargo","carry","catch","cause","chain","chair","chalk","charm","chart","chase","cheap","check","cheek","cheer","chess","chest","chief","child","chill","choir","civil","claim","class","clean","clear","clerk","click","cliff","climb","clock","close","cloth","cloud","coach","coast","color","comic","coral","couch","count","court","cover","crack","craft","crane","crash","crazy","cream","crime","crisp","cross","crowd","crown","cruel","crush","curve","cycle","daily","dance","delay","depth","diary","dirty","doubt","dough","draft","drama","dream","dress","drink","drive","eager","early","earth","eight","elbow","elder","elect","empty","enemy","enjoy","enter","entry","equal","error","essay","event","every","exact","exist","extra","faith","false","fancy","fault","feast","fence","fever","field","fifty","fight","final","flame","flash","fleet","float","flood","floor","flour","fluid","focus","force","forge","forty","forum","frame","fresh","front","frost","fruit","funny","ghost","giant","given","glass","globe","glory","glove","grace","grade","grain","grand","grant","grape","graph","grass","great","green","greet","grief","group","guard","guess","guest","guide","habit","happy","harsh","heart","heavy","hello","honey","honor","horse","hotel","house","human","humor","hurry","ideal","image","index","inner","input","issue","ivory","jelly","jewel","joint","judge","juice","knife","knock","label","labor","large","laser","later","laugh","layer","learn","lemon","level","light","limit","local","logic","loose","lover","lucky","lunch","magic","major","maker","march","match","maybe","mayor","medal","media","mercy","metal","meter","midst","minor","model","money","month","moral","motor","mount","mouse","mouth","movie","music","nerve","never","night","noble","noise","north","novel","nurse","ocean","offer","often","olive","onion","opera","orbit","order","other","outer","owner","paint","panel","panic","paper","party","pasta","peace","pearl","phase","phone","photo","piano","piece","pilot","pitch","pizza","place","plain","plane","plant","plate","point","polar","pound","power","press","price","pride","prime","print","prize","proof","proud","pupil","puppy","queen","quick","quiet","quite","radio","raise","range","rapid","ratio","reach","react","ready","realm","relax","reply","rider","ridge","right","risky","rival","river","robot","rocky","rough","round","route","royal","rural","salad","sauce","scale","scene","scent","score","scout","sense","serve","seven","shade","shake","shape","share","shark","sharp","sheep","sheet","shelf","shell","shift","shine","shirt","shock","shoot","shore","short","shout","sight","skill","skirt","sleep","slice","slide","smart","smell","smile","smoke","snake","solid","solve","sorry","sound","south","space","spare","speak","speed","spell","spend","spice","spine","spoon","sport","spray","staff","stage","stair","stamp","stand","start","state","steak","steam","steel","stick","still","stock","stone","store","storm","story","stove","strip","study","style","sugar","sunny","super","sweet","swing","sword","table","taste","teach","thank","theme","there","thick","thing","think","third","three","throw","thumb","tiger","tight","timer","tired","title","toast","today","tooth","topic","total","touch","tough","tower","trace","track","trade","trail","train","treat","trend","trial","tribe","trick","truck","truly","trust","truth","tulip","twice","uncle","under","union","unity","until","upper","upset","urban","usage","usual","valid","value","video","virus","visit","vital","vivid","vocal","voice","waste","watch","water","wheel","where","which","while","white","whole","woman","world","worry","worth","would","write","wrong","yield","young","youth","zebra"],"6":["absorb","accept","access","action","active","actual","admire","advice","afford","agency","agenda","almost","always","amount","animal","annual","answer","anyone","appeal","appear","arrive","artist","assist","attack","attend","autumn","avenue","backup","banana","barrel","basket","battle","beauty","become","before","behave","behind","belief","belong","beside","better","beyond","bishop","bitter","border","borrow","bottle","bottom","bounce","branch","breath","breeze","bridge","bright","broken","bubble","bucket","budget","bullet","bundle","burden","butter","button","camera","campus","candle","cannon","canvas","carbon","career","carpet","castle","casual","cattle","center","chance","change","charge","cheese","cherry","choice","choose","church","circle","client","closet","coffee","collar","column","combat","comedy","common","cookie","copper","corner","cotton","county","couple","course","cousin","cradle","create","credit","crisis","critic","cruise","custom","damage","danger","dealer","debate","decade","decide","defeat","defend","degree","demand","depend","desert","design","desire","detail","device","dinner","direct","divide","doctor","dollar","domain","donkey","double","dragon","drawer","driver","during","easily","editor","effect","effort","eleven","emerge","empire","enable","energy","engine","enough","ensure","entire","escape","estate","evolve","expand","expect","expert","export","fabric","factor","family","famous","farmer","father","finger","finish","flight","flower","follow","forest","forget","formal","fossil","friend","frozen","future","galaxy","garage","garden","garlic","gather","gentle","ginger","global","golden","govern","guitar","hammer","handle","harbor","health","heaven","height","helmet","hidden","hockey","honest","horror","humble","hunger","hunter","island","jacket","jungle","junior","kettle","kidney","kitten","ladder","launch","lawyer","leader","league","legend","lesson","letter","liquid","listen","little","lizard","lovely","magnet","manner","marble","margin","market","master","matter","meadow","medium","member","memory","mental","mentor","method","middle","minute","mirror","mobile","modern","moment","monkey","mother","motion","muscle","museum","narrow","nation","native","nature","nearby","nearly","needle","nephew","nickel","normal","notice","number","object","office","online","orange","origin","oxygen","oyster","palace","parade","parent","parrot","peanut","pencil","people","pepper","period","person","pickle","pillow","planet","player","please","plenty","pocket","poetry","police","policy","potato","powder","prayer","pretty","prince","profit","public","puzzle","rabbit","racing","random","rather","reader","really","reason","recipe","record","reduce","reform","region","relief","remain","remote","repair","repeat","report","rescue","result","return","reveal","reward","rhythm","ribbon","rocket","rubber","saddle","safety","salmon","sample","school","screen","script","search","season","second","secret","select","senior","series","settle","shadow","shower","signal","silent","silver","simple","singer","single","sister","sketch","slight","smooth","soccer","social","source","speech","spider","spirit","spread","spring","square","stable","statue","steady","strain","stream","street","stress","strike","string","strong","studio","submit","sudden","summer","summit","sunset","supply","surely","survey","switch","symbol","system","tablet","talent","target","temple","tender","tennis","thirty","thread","throne","ticket","timber","tomato","tongue","travel","treaty","tunnel","turkey","turtle","twelve","unique","update","useful","valley","velvet","violin","vision","volume","wallet","walnut","wander","warmth","wealth","weapon","weekly","weight","window","winner","winter","wisdom","wizard","wonder","wooden","yellow","zipper"],"7":["ability","absence","academy","account","achieve","address","advance","airline","airport","amazing","ancient","anxiety","apology","appoint","arrange","article","attempt","attract","average","balance","balloon","bandage","banking","bargain","barrier","battery","bedroom","believe","benefit","bicycle","billion","biscuit","blanket","brother","cabinet","capital","captain","caption","capture","careful","carrier","catalog","ceiling","central","century","certain","chamber","channel","chapter","charity","chicken","chimney","circuit","citizen","classic","climate","cluster","coconut","collect","college","comfort","command","comment","company","compare","compass","complex","concept","concert","connect","consist","contact","contain","content","contest","context","control","convert","correct","costume","cottage","council","counter","country","courage","cracker","crystal","culture","curious","current","cushion","dancing","deliver","density","deposit","desktop","despite","dessert","diamond","digital","dignity","display","distant","dolphin","drawing","dynamic","eastern","economy","edition","element","emotion","endless","evening","example","explain","explore","express","extreme","factory","faculty","fashion","feather","feature","federal","fiction","fifteen","finance","fitness","foreign","forever","fortune","forward","freedom","gallery","garbage","general","genuine","giraffe","glasses","gravity","grocery","habitat","harmony","harvest","healthy","hearing","helpful","highway","history","holiday","horizon","housing","however","hundred","husband","imagine","improve","include","initial","inquiry","insight","inspire","install","instant","journey","justice","kitchen","landing","laundry","leather","lecture","library","license","limited","machine","magical","mailbox","manager","mansion","massive","maximum","meaning","measure","medical","meeting","mention","message","million","mineral","minimum","mission","mistake","mixture","monitor","monster","morning","musical","mystery","natural","network","neutral","nothing","nuclear","obvious","octopus","officer","opinion","orchard","organic","outdoor","outline","package","painter","panther","parking","partner","passage","passion","patient","pattern","payment","penguin","pension","percent","perfect","perform","perhaps","picture","pilgrim","pioneer","plastic","pleased","popular","portion","predict","premium","prepare","present","prevent","primary","printer","privacy","private","problem","process","produce","product","profile","program","project","promise","protect","protein","provide","publish","pumpkin","pyramid","quality","quarter","rainbow","reality","receipt","receive","recover","reflect","regular","release","remains","request","require","reserve","respect","respond","restore","revenue","revolve","rooster","routine","sailing","satisfy","scholar","science","scratch","section","segment","serious","service","session","setting","shelter","sheriff","silence","similar","sincere","society","soldier","someone","special","sponsor","station","stomach","storage","strange","stretch","student","subject","success","suggest","summary","sunrise","support","supreme","surface","surgeon","survive","suspect","sustain","teacher","tension","theater","therapy","thought","thunder","tonight","tornado","totally","tourist","towards","traffic","trouble","trumpet","uniform","unknown","unusual","upgrade","utility","vaccine","variety","vehicle","venture","version","veteran","village","vintage","virtual","visible","visitor","volcano","wedding","weekend","welcome","western","whisper","without","witness","writing"],"8":["absolute","academic","accident","accurate","activity","actually","addition","adequate","advanced","aircraft","alphabet","although","analysis","announce","anything","anywhere","apparent","appetite","approach","approval","argument","artistic","assembly","athletic","attitude","audience","baseball","bathroom","behavior","birthday","blizzard","boundary","building","business","calendar","campaign","capacity","cardinal","carnival","category","ceremony","champion","chemical","children","chipmunk","circular","civilian","clothing","collapse","complete","computer","concrete","conflict","consider","constant","consumer","continue","contract","convince","corridor","creative","critical","crossing","cucumber","customer","database","daughter","deadline","decision","defender","delicate","delivery","describe","designer","detailed","diameter","dinosaur","director","disaster","discount","discover","distance","district","document","dominant","doorbell","download","dramatic","dumpling","economic","educated","election","electric","elephant","elevator","employee","engineer","enormous","entrance","envelope","equation","estimate","evidence","exchange","exercise","exposure","external","facility","familiar","festival","fighting","football","forecast","fountain","fragment","frequent","friendly","frontier","function","gardener","generate","generous","gigantic","graduate","graphics","grateful","guardian","guidance","handsome","hardware","headline","heritage","highland","historic","homework","hospital","humidity","identity","illusion","incident","increase","indicate","industry","infinite","innocent","instance","instinct","interest","internal","internet","investor","keyboard","landmark","language","laughter","lavender","learning","leftover","lifetime","location","magnetic","maintain","majority","marathon","material","medicine","memorial","merchant","midnight","military","minister","minority","mosquito","mountain","movement","multiple","mushroom","national","negative","neighbor","notebook","numerous","obstacle","occasion","offering","official","opponent","opposite","ordinary","organize","original","overcome","painting","parallel","passport","password","patience","peaceful","peculiar","pinnacle","platform","pleasant","plumbing","politics","portrait","positive","possible","powerful","practice","precious","presence","preserve","pressure","previous","princess","priority","probably","producer","progress","property","proposal","prospect","protocol","provider","province","purchase","question","quotient","railroad","rational","reaction","receiver","recovery","regional","relation","relative","remember","reminder","research","resident","resource","response","restless","reversal","sandwich","scenario","schedule","scissors","sculptor","security","sentence","separate","sequence","shoulder","sidewalk","simplify","skeleton","slippery","snowball","snowfall","software","solution","somebody","somewhat","southern","spectrum","splendid","sporting","squirrel","standard","starfish","strategy","strength","struggle","stunning","suburban","suitcase","sunlight","sunshine","superior","supplier","surprise","surround","survival","symphony","tangible","teaspoon","teenager","telegram","template","terminal","textbook","thinking","thousand","together","tomorrow","tortoise","tracking","training","transfer","treasure","triangle","tropical","umbrella","universe","unlikely","vacation","valuable","variable","vertical","vineyard","volcanic","warranty","weakness","whatever","whenever","wildlife","wireless","workshop","yourself"]};
+const MAX_ROWS = {5:6, 6:7, 7:7, 8:8};
+let DICT = null;            // Set — 단어 검사용 사전
+let dictFailed = false;
+
+async function loadDict(){
+  const urls = [
+    "https://raw.githubusercontent.com/dwyl/english-words/master/words_alpha.txt",
+    "https://cdn.jsdelivr.net/gh/dwyl/english-words@master/words_alpha.txt"
+  ];
+  for (const u of urls){
+    try{
+      const r = await fetch(u);
+      if(!r.ok) continue;
+      const txt = await r.text();
+      const s = new Set();
+      for (const w of txt.split(/\r?\n/)){
+        const t = w.trim().toLowerCase();
+        if (t.length>=5 && t.length<=8 && /^[a-z]+$/.test(t)) s.add(t);
+      }
+      for (const k in ANSWERS) for (const w of ANSWERS[k]) s.add(w);
+      if (s.size > 1000){ DICT = s; updateDictChip(); return; }
+    }catch(e){}
+  }
+  dictFailed = true; updateDictChip();
+}
+function updateDictChip(){
+  const c = document.getElementById("dictChip");
+  if (DICT){ c.textContent = "사전 ✓"; c.title = "사전에 있는 단어만 입력할 수 있어요"; }
+  else if (dictFailed){ c.textContent = "사전 없음 (모든 단어 허용)"; c.title = "사전을 불러오지 못해 아무 단어나 입력할 수 있어요"; }
+}
+function isValidWord(w){
+  if (!/^[a-z]+$/.test(w)) return false;
+  if (DICT) return DICT.has(w);
+  return true;
+}
+
+/* 채점: g=자리까지 맞음, y=글자만 있음, b=없음 */
+function evaluate(guess, answer){
+  const n = answer.length, res = Array(n).fill("b"), cnt = {};
+  for (let i=0;i<n;i++){
+    if (guess[i]===answer[i]) res[i]="g";
+    else cnt[answer[i]] = (cnt[answer[i]]||0)+1;
+  }
+  for (let i=0;i<n;i++){
+    if (res[i]!=="g" && cnt[guess[i]]>0){ res[i]="y"; cnt[guess[i]]--; }
+  }
+  return res.join("");
+}
+
+/* ================= 공통 상태 ================= */
+const PREFIX = "wordle-duel-v1-";
+let peer = null, hostConn = null;
+let isHost = false, myId = null, roomCode = null;
+let S = null;                // 서버(방장)가 보내준 최신 상태
+let cur = "";                // 지금 입력 중인 단어
+let pending = false;
+let lastRowCount = 0, lastRoundNo = -1;
+let localDeadline = null;    // performance.now() 기준
+let chatSeen = 0;
+
+const $ = id => document.getElementById(id);
+function toast(t, ms=1600){
+  const el = $("toast"); el.textContent = t; el.classList.add("show");
+  clearTimeout(toast._t); toast._t = setTimeout(()=>el.classList.remove("show"), ms);
+}
+function store(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+function load(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+function esc(s){ return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function genCode(){
+  const a = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; let s="";
+  for(let i=0;i<5;i++) s += a[Math.floor(Math.random()*a.length)];
+  return s;
+}
+
+/* 메시지 보내기 (방장이면 자기 자신에게 바로 처리) */
+function send(msg){
+  if (isHost) hostHandle(myId, msg);
+  else if (hostConn && hostConn.open) hostConn.send(msg);
+}
+
+/* ================= 방장(호스트) 로직 ================= */
+const H = {
+  players: new Map(),   // id -> {name, score, conn, joinedAt}
+  phase: "lobby",
+  settings: { len:5, time:180, mode:"all" },
+  roundNo: 0,
+  round: null,
+  chat: [],
+  used: new Set(),
+  timer: null
+};
+
+function hostAddChat(entry){
+  H.chat.push(entry); if (H.chat.length>80) H.chat.shift();
+  hostBroadcastRaw({t:"chat", entry});
+}
+function sysMsg(text){ hostAddChat({sys:true, text, at:Date.now()}); }
+
+function uniqueName(name, id){
+  name = (name||"").trim().slice(0,12) || "플레이어";
+  const names = new Set([...H.players].filter(([k])=>k!==id).map(([,p])=>p.name));
+  let n = name, i = 2;
+  while (names.has(n)) n = name + i++;
+  return n;
+}
+
+function hostState(forId){
+  const r = H.round;
+  let round = null;
+  if (r){
+    const boards = {};
+    for (const id in r.boards){
+      const b = r.boards[id];
+      boards[id] = {
+        pats: b.pats, solved: b.solved, done: b.done, typing: b.typing, finishMs: b.finishMs,
+        words: (H.phase==="result" || id===forId) ? b.words : null
+      };
+    }
+    round = {
+      len: r.len, maxRows: r.maxRows, boards,
+      remaining: r.deadline ? Math.max(0, r.deadline - Date.now()) : null,
+      answer: H.phase==="result" ? r.answer : null,
+      results: H.phase==="result" ? r.results : null
+    };
+  }
+  return {
+    t:"state", phase:H.phase, settings:H.settings, roundNo:H.roundNo, hostId:myId,
+    players:[...H.players].map(([id,p])=>({id, name:p.name, score:p.score})),
+    round
+  };
+}
+function hostBroadcastRaw(msg){
+  for (const [id,p] of H.players){
+    if (id===myId) onMessage(msg);
+    else if (p.conn && p.conn.open) { try{ p.conn.send(msg); }catch(e){} }
+  }
+}
+function hostBroadcastState(){
+  for (const [id,p] of H.players){
+    const st = hostState(id);
+    if (id===myId) onMessage(st);
+    else if (p.conn && p.conn.open) { try{ p.conn.send(st); }catch(e){} }
+  }
+}
+function sendTo(id, msg){
+  if (id===myId) onMessage(msg);
+  else { const p = H.players.get(id); if (p && p.conn && p.conn.open) p.conn.send(msg); }
+}
+
+function hostStartRound(){
+  const len = H.settings.len;
+  const list = ANSWERS[len];
+  let pool = list.filter(w=>!H.used.has(w));
+  if (!pool.length){ list.forEach(w=>H.used.delete(w)); pool = list.slice(); }
+  const answer = pool[Math.floor(Math.random()*pool.length)];
+  H.used.add(answer);
+  const boards = {};
+  for (const id of H.players.keys()) boards[id] = {pats:[], words:[], solved:false, done:false, typing:0, finishMs:null};
+  H.roundNo++;
+  H.round = {
+    answer, len, maxRows: MAX_ROWS[len], boards, startedAt: Date.now(),
+    deadline: H.settings.time ? Date.now() + H.settings.time*1000 : null,
+    order: [], results: null
+  };
+  H.phase = "playing";
+  clearTimeout(H.timer);
+  if (H.round.deadline) H.timer = setTimeout(()=>hostEndRound("time"), H.settings.time*1000 + 200);
+  sysMsg(`${H.roundNo}라운드 시작! ${len}글자 단어예요.`);
+  hostBroadcastState();
+}
+
+function hostCheckEnd(){
+  const r = H.round; if (!r || H.phase!=="playing") return;
+  const bs = Object.values(r.boards);
+  if (H.settings.mode==="first" && r.order.length>0) return hostEndRound("first");
+  if (bs.length===0 || bs.every(b=>b.done)) return hostEndRound("all");
+}
+
+function hostEndRound(reason){
+  const r = H.round; if (!r || H.phase!=="playing") return;
+  clearTimeout(H.timer);
+  const pts = [3,2];
+  const results = [];
+  r.order.forEach((id,i)=>{
+    const p = H.players.get(id); const b = r.boards[id];
+    const add = i<2 ? pts[i] : 1;
+    if (p) p.score += add;
+    results.push({id, name:p?p.name:"(나감)", solved:true, rows:b.pats.length, ms:b.finishMs, add});
+  });
+  for (const id in r.boards){
+    if (r.order.includes(id)) continue;
+    const p = H.players.get(id); const b = r.boards[id];
+    results.push({id, name:p?p.name:"(나감)", solved:false, rows:b.pats.length, ms:null, add:0});
+  }
+  r.results = results;
+  H.phase = "result";
+  const msg = reason==="time" ? "시간 종료!" : reason==="first" ? "첫 정답자가 나왔어요!" : "모두 끝났어요!";
+  sysMsg(`${msg} 정답은 ${r.answer.toUpperCase()}`);
+  hostBroadcastState();
+}
+
+function hostHandle(id, msg, conn){
+  if (!msg || typeof msg!=="object") return;
+  const p = H.players.get(id);
+
+  if (msg.t==="hello"){
+    if (!p){
+      const name = uniqueName(msg.name, id);
+      H.players.set(id, {name, score:0, conn: conn||null, joinedAt:Date.now()});
+      sendTo(id, {t:"welcome", id, chat:H.chat, code:roomCode});
+      sysMsg(`${name}님이 들어왔어요.` + (H.phase==="playing" ? " (이번 라운드는 관전)" : ""));
+      hostBroadcastState();
+    }
+    return;
+  }
+  if (!p) return;
+
+  switch(msg.t){
+    case "chat": {
+      const text = String(msg.text||"").trim().slice(0,200);
+      if (text) hostAddChat({name:p.name, id, text, at:Date.now()});
+      break;
+    }
+    case "settings": {
+      if (id!==myId || H.phase==="playing") return;
+      const s = msg.settings||{};
+      if ([5,6,7,8].includes(s.len)) H.settings.len = s.len;
+      if ([0,120,180,300].includes(s.time)) H.settings.time = s.time;
+      if (["all","first"].includes(s.mode)) H.settings.mode = s.mode;
+      hostBroadcastState();
+      break;
+    }
+    case "start": {
+      if (id!==myId || H.phase==="playing") return;
+      hostStartRound();
+      break;
+    }
+    case "resetScores": {
+      if (id!==myId || H.phase==="playing") return;
+      for (const pl of H.players.values()) pl.score = 0;
+      sysMsg("점수가 초기화됐어요.");
+      hostBroadcastState();
+      break;
+    }
+    case "typing": {
+      const r = H.round; if (!r || H.phase!=="playing") return;
+      const b = r.boards[id]; if (!b || b.done) return;
+      b.typing = Math.max(0, Math.min(r.len, msg.n|0));
+      hostBroadcastRaw({t:"typing", id, n:b.typing});
+      break;
+    }
+    case "guess": {
+      const r = H.round;
+      if (!r || H.phase!=="playing") return sendTo(id,{t:"err", text:"지금은 입력할 수 없어요"});
+      const b = r.boards[id];
+      if (!b) return sendTo(id,{t:"err", text:"이번 라운드는 관전 중이에요"});
+      if (b.done) return;
+      const w = String(msg.word||"").toLowerCase();
+      if (w.length!==r.len || !/^[a-z]+$/.test(w)) return sendTo(id,{t:"err", text:`${r.len}글자 영어 단어를 입력하세요`});
+      const pat = evaluate(w, r.answer);
+      b.words.push(w); b.pats.push(pat); b.typing = 0;
+      if (pat === "g".repeat(r.len)){
+        b.solved = true; b.done = true; b.finishMs = Date.now() - r.startedAt;
+        r.order.push(id);
+        const rank = r.order.length;
+        sysMsg(`🎉 ${p.name}님이 ${b.pats.length}번 만에 맞혔어요! (${rank}등)`);
+      } else if (b.pats.length >= r.maxRows){
+        b.done = true;
+        sysMsg(`${p.name}님은 기회를 모두 썼어요.`);
+      }
+      hostBroadcastState();
+      setTimeout(hostCheckEnd, 1400); // 마지막 줄 뒤집기 애니메이션을 보여준 뒤 종료
+      break;
+    }
+  }
+}
+
+function hostRemove(id){
+  const p = H.players.get(id); if (!p) return;
+  H.players.delete(id);
+  if (H.round && H.round.boards[id] && H.phase==="playing"){
+    delete H.round.boards[id];
+    H.round.order = H.round.order.filter(x=>x!==id);
+  }
+  sysMsg(`${p.name}님이 나갔어요.`);
+  hostBroadcastState();
+  hostCheckEnd();
+}
+
+/* ================= 연결 ================= */
+function getName(){
+  const n = $("nameInp").value.trim();
+  if (!n){ $("entryMsg").textContent = "닉네임을 입력하세요"; $("nameInp").focus(); return null; }
+  store("wd_name", n);
+  return n;
+}
+function setEntryBusy(b, msg){
+  $("createBtn").disabled = b; $("joinBtn").disabled = b;
+  $("entryMsg").textContent = msg||"";
+}
+function checkPeerLib(){
+  if (typeof Peer === "undefined"){ setEntryBusy(false, "연결 라이브러리를 불러오지 못했어요. 새로고침해 보세요."); return false; }
+  return true;
+}
+
+function createRoom(tries=0){
+  const name = getName(); if (!name || !checkPeerLib()) return;
+  setEntryBusy(true, "방을 만드는 중…");
+  const code = genCode();
+  const pr = new Peer(PREFIX + code);
+  pr.on("open", id=>{
+    peer = pr; isHost = true; myId = id; roomCode = code;
+    H.players.set(myId, {name, score:0, conn:null, joinedAt:Date.now()});
+    enterGame();
+    onMessage({t:"welcome", id:myId, chat:[], code});
+    sysMsg(`방이 만들어졌어요. 초대 링크를 친구들에게 보내 주세요!`);
+    hostBroadcastState();
+  });
+  pr.on("connection", conn=>{
+    conn.on("data", d=>hostHandle(conn.peer, d, conn));
+    conn.on("close", ()=>hostRemove(conn.peer));
+    conn.on("error", ()=>hostRemove(conn.peer));
+  });
+  pr.on("disconnected", ()=>{ try{ pr.reconnect(); }catch(e){} });
+  pr.on("error", e=>{
+    if (e.type==="unavailable-id" && tries<5){ pr.destroy(); createRoom(tries+1); return; }
+    if (!isHost) setEntryBusy(false, "방을 만들지 못했어요: " + e.type);
+    else if (e.type!=="peer-unavailable") toast("연결 오류: " + e.type);
+  });
+}
+
+function joinRoom(){
+  const name = getName(); if (!name || !checkPeerLib()) return;
+  const code = $("codeInp").value.trim().toUpperCase();
+  if (code.length!==5){ $("entryMsg").textContent = "5자리 방 코드를 입력하세요"; return; }
+  setEntryBusy(true, "방에 연결하는 중…");
+  const pr = new Peer();
+  let opened = false;
+  const fail = (m)=>{ if (opened) return; try{pr.destroy();}catch(e){} setEntryBusy(false, m); };
+  const to = setTimeout(()=>fail("연결 시간이 초과됐어요. 코드를 확인하거나 다시 시도해 주세요."), 15000);
+  pr.on("open", ()=>{
+    const conn = pr.connect(PREFIX + code, {reliable:true});
+    conn.on("open", ()=>{
+      opened = true; clearTimeout(to);
+      peer = pr; hostConn = conn; roomCode = code;
+      conn.send({t:"hello", name});
+    });
+    conn.on("data", onMessage);
+    conn.on("close", ()=>{ if (opened){ toast("방장과 연결이 끊겼어요", 4000); sysLocal("방장과 연결이 끊겼어요. 새로고침 후 다시 참가해 주세요."); } });
+  });
+  pr.on("disconnected", ()=>{ try{ pr.reconnect(); }catch(e){} });
+  pr.on("error", e=>{
+    if (e.type==="peer-unavailable"){ clearTimeout(to); fail("그 코드의 방을 찾을 수 없어요."); }
+    else if (!opened){ clearTimeout(to); fail("연결 오류: " + e.type); }
+  });
+}
+
+function enterGame(){
+  $("entry").classList.add("hidden");
+  $("game").classList.remove("hidden");
+  $("roomCode").textContent = roomCode;
+  history.replaceState(null, "", location.pathname + "?room=" + roomCode);
+  buildKeyboard();
+}
+
+/* ================= 클라이언트: 메시지 처리 ================= */
+function onMessage(m){
+  if (!m || typeof m!=="object") return;
+  switch(m.t){
+    case "welcome":
+      myId = m.id; roomCode = m.code || roomCode;
+      if ($("game").classList.contains("hidden")) enterGame();
+      $("chatLog").innerHTML = "";
+      (m.chat||[]).forEach(addChat);
+      break;
+    case "state": applyState(m); break;
+    case "chat": addChat(m.entry); break;
+    case "typing":
+      if (S && S.round && S.round.boards[m.id]){ S.round.boards[m.id].typing = m.n; renderOpps(); }
+      break;
+    case "err":
+      pending = false; toast(m.text); shakeRow();
+      break;
+  }
+}
+
+function applyState(st){
+  const prev = S; S = st;
+  const r = st.round;
+  if (st.roundNo !== lastRoundNo){
+    lastRoundNo = st.roundNo; cur = ""; pending = false; lastRowCount = 0;
+  }
+  if (r){
+    localDeadline = (r.remaining!=null && st.phase==="playing") ? performance.now() + r.remaining : null;
+    const mb = r.boards[myId];
+    const rows = mb ? mb.pats.length : 0;
+    if (rows > lastRowCount){
+      cur = ""; pending = false;
+      const last = mb.pats[rows-1];
+      renderAll(rows-1);
+      lastRowCount = rows;
+      if (mb.solved) toast(["천재!","대단해요!","훌륭해요!","좋아요!","잘했어요!","휴~ 아슬아슬!","겨우 맞혔어요!","마지막에 성공!"][Math.min(rows-1,7)], 2200);
+      else if (mb.done) toast("아쉬워요! 기회를 다 썼어요", 2200);
+      return;
+    }
+    lastRowCount = rows;
+  } else localDeadline = null;
+  renderAll(-1);
+}
+
+function addChat(e){
+  const log = $("chatLog");
+  const d = document.createElement("div");
+  if (e.sys){ d.className = "cm sys"; d.textContent = "• " + e.text; }
+  else {
+    d.className = "cm";
+    const w = document.createElement("span"); w.className="who"; w.textContent = e.name;
+    w.style.color = colorFor(e.id);
+    const t = document.createElement("span"); t.textContent = e.text;
+    d.append(w,t);
+  }
+  const atBottom = log.scrollHeight - log.scrollTop - log.clientHeight < 40;
+  log.appendChild(d);
+  if (atBottom) log.scrollTop = log.scrollHeight;
+}
+function sysLocal(text){ addChat({sys:true, text}); }
+function colorFor(id){
+  let h = 0; for (const c of String(id)) h = (h*31 + c.charCodeAt(0)) % 360;
+  return `hsl(${h} 70% 68%)`;
+}
+
+/* ================= 렌더링 ================= */
+function renderAll(revealRow){
+  if (!S) return;
+  renderHeader(); renderPlayers(); renderPanel(); renderBoard(revealRow); renderKeys(); renderOpps();
+}
+
+function renderHeader(){
+  const rc = $("roundChip");
+  if (S.roundNo>0 && S.round){ rc.classList.remove("hidden"); rc.innerHTML = `${S.roundNo}라운드 · <b>${S.round.len}글자</b>`; }
+  else rc.classList.add("hidden");
+  tick();
+}
+function tick(){
+  const t = $("timer");
+  if (!S || S.phase!=="playing" || localDeadline==null){ t.classList.add("hidden"); return; }
+  const left = Math.max(0, Math.ceil((localDeadline - performance.now())/1000));
+  t.classList.remove("hidden");
+  t.textContent = `⏱ ${Math.floor(left/60)}:${String(left%60).padStart(2,"0")}`;
+  t.classList.toggle("warn", left<=15);
+}
+setInterval(tick, 250);
+
+function renderPlayers(){
+  const el = $("players");
+  el.innerHTML = S.players.map(p=>`<span class="pp" style="color:${colorFor(p.id)}">${p.id===S.hostId?"👑 ":""}${esc(p.name)}${p.id===myId?" (나)":""}</span>`).join("");
+}
+
+function segHTML(key, opts, val, enabled){
+  return `<div class="seg">` + opts.map(([v,l])=>
+    `<button data-k="${key}" data-v="${v}" class="${v===val?"on":""}" ${enabled?"":"disabled"}>${l}</button>`).join("") + `</div>`;
+}
+function settingsHTML(){
+  const me = myId===S.hostId, s = S.settings;
+  return `
+    <div class="opt"><div class="lb">단어 길이</div>${segHTML("len",[[5,"5글자"],[6,"6글자"],[7,"7글자"],[8,"8글자"]], s.len, me)}</div>
+    <div class="opt"><div class="lb">제한 시간</div>${segHTML("time",[[0,"없음"],[120,"2분"],[180,"3분"],[300,"5분"]], s.time, me)}</div>
+    <div class="opt"><div class="lb">라운드 방식</div>${segHTML("mode",[["all","모두 끝날 때까지"],["first","첫 정답자 나오면 종료"]], s.mode, me)}</div>
+    <p class="hint">점수: 1등 +3 · 2등 +2 · 그 밖에 맞히면 +1 · 기회는 ${MAX_ROWS[s.len]}번</p>
+    ${me ? `<div class="row" style="margin-top:14px">
+        <button class="btn primary" id="startBtn" style="flex:1">${S.roundNo>0?"다음 라운드 시작":"게임 시작"}</button>
+        ${S.roundNo>0?`<button class="btn" id="resetBtn">점수 초기화</button>`:""}
+      </div>` : `<p class="hint" style="margin-top:12px">방장이 시작하기를 기다리는 중…</p>`}
+  `;
+}
+
+function renderPanel(){
+  const panel = $("panel"), play = $("playArea");
+  if (S.phase==="playing"){
+    panel.classList.add("hidden"); play.classList.remove("hidden");
+    const mb = S.round && S.round.boards[myId];
+    if (!mb){ panel.classList.remove("hidden"); panel.innerHTML = `<h2>관전 중</h2><p class="hint">이번 라운드가 끝나면 다음 라운드부터 참여할 수 있어요. 왼쪽에서 다른 사람 진행 상황을 볼 수 있어요.</p>`; play.classList.add("hidden"); }
+    return;
+  }
+  panel.classList.remove("hidden");
+  if (S.phase==="lobby"){
+    play.classList.add("hidden");
+    panel.innerHTML = `<h2>대기실</h2>
+      <p class="hint" style="margin:-4px 0 14px">초대 링크를 보내면 친구가 바로 들어올 수 있어요. 지금 ${S.players.length}명</p>
+      ${settingsHTML()}`;
+  } else if (S.phase==="result"){
+    play.classList.add("hidden");
+    const r = S.round;
+    const rows = (r.results||[]).map((x,i)=>{
+      const pl = S.players.find(p=>p.id===x.id);
+      return `<tr><td>${x.solved? (i+1)+"등" : "-"}</td>
+        <td style="color:${colorFor(x.id)};font-weight:700">${esc(x.name)}</td>
+        <td>${x.solved ? `✔ ${x.rows}번 · ${(x.ms/1000).toFixed(1)}초` : `✘ ${x.rows}번`}</td>
+        <td class="plus">${x.add?"+"+x.add:""}</td>
+        <td>${pl?pl.score:"-"}점</td></tr>`;
+    }).join("");
+    const boards = Object.entries(r.boards).map(([id,b])=>{
+      const pl = S.players.find(p=>p.id===id);
+      return `<div class="rb"><div class="n">${esc(pl?pl.name:"(나감)")}</div>${miniHTML(b, r, true, true)}</div>`;
+    }).join("");
+    panel.innerHTML = `<h2>${S.roundNo}라운드 결과</h2>
+      <div class="hint">정답</div>
+      <div class="answer">${r.answer}<a href="https://en.dict.naver.com/#/search?query=${r.answer}" target="_blank" rel="noopener">뜻 보기 ↗</a></div>
+      <table class="rank"><tr><th>순위</th><th>이름</th><th>결과</th><th>획득</th><th>총점</th></tr>${rows}</table>
+      <div class="reveal-boards">${boards}</div>
+      <hr style="border:none;border-top:1px solid var(--line);margin:18px 0">
+      ${settingsHTML()}`;
+  }
+  panel.querySelectorAll(".seg button").forEach(b=>b.onclick=()=>{
+    const k = b.dataset.k; let v = b.dataset.v;
+    if (k!=="mode") v = Number(v);
+    send({t:"settings", settings:{...S.settings, [k]:v}});
+  });
+  const sb = $("startBtn"); if (sb) sb.onclick = ()=>send({t:"start"});
+  const rb = $("resetBtn"); if (rb) rb.onclick = ()=>send({t:"resetScores"});
+}
+
+function renderBoard(revealRow){
+  const el = $("board");
+  if (!S.round || S.phase!=="playing" || !S.round.boards[myId]){ el.innerHTML=""; return; }
+  const r = S.round, b = r.boards[myId];
+  const ts = Math.max(34, Math.min(58, Math.floor((Math.min(window.innerWidth, 540) - 40) / r.len) - 6));
+  el.style.setProperty("--ts", ts + "px");
+  let html = "";
+  for (let i=0;i<r.maxRows;i++){
+    html += `<div class="brow" style="grid-template-columns:repeat(${r.len},var(--ts))" data-r="${i}">`;
+    for (let j=0;j<r.len;j++){
+      if (i < b.pats.length){
+        const ch = b.words ? b.words[i][j] : "";
+        const rv = i===revealRow ? ` reveal" style="animation-delay:${j*0.12}s` : "";
+        html += `<div class="tile ${b.pats[i][j]}${rv}">${ch}</div>`;
+      } else if (i===b.pats.length && !b.done){
+        const ch = cur[j]||"";
+        html += `<div class="tile ${ch?"filled":""}">${ch}</div>`;
+      } else html += `<div class="tile"></div>`;
+    }
+    html += `</div>`;
+  }
+  el.innerHTML = html;
+}
+function updateCurRow(){
+  if (!S || !S.round) return;
+  const b = S.round.boards[myId]; if (!b) return;
+  const row = $("board").querySelector(`.brow[data-r="${b.pats.length}"]`);
+  if (!row) return;
+  [...row.children].forEach((t,j)=>{ const ch = cur[j]||""; t.textContent = ch; t.className = "tile" + (ch?" filled":""); });
+}
+function shakeRow(){
+  if (!S || !S.round) return;
+  const b = S.round.boards[myId]; if (!b) return;
+  const row = $("board").querySelector(`.brow[data-r="${b.pats.length}"]`);
+  if (!row) return;
+  row.classList.remove("shake"); void row.offsetWidth; row.classList.add("shake");
+}
+
+function miniHTML(b, r, showLetters, big){
+  let h = `<div class="mini${big?" big":""}">`;
+  for (let i=0;i<r.maxRows;i++){
+    h += `<div class="mr" style="grid-template-columns:repeat(${r.len},auto)">`;
+    for (let j=0;j<r.len;j++){
+      if (i < b.pats.length){
+        const ch = showLetters && b.words ? b.words[i][j] : "";
+        h += `<div class="mc ${b.pats[i][j]}">${ch}</div>`;
+      } else if (i===b.pats.length && !b.done && j < (b.typing||0)) h += `<div class="mc t"></div>`;
+      else h += `<div class="mc"></div>`;
+    }
+    h += `</div>`;
+  }
+  return h + `</div>`;
+}
+
+function renderOpps(){
+  const el = $("opps");
+  if (!S){ el.innerHTML=""; return; }
+  const r = S.round;
+  const list = S.players.slice().sort((a,b)=> (b.id===myId) - (a.id===myId) || b.score - a.score);
+  el.innerHTML = list.map(p=>{
+    const b = r && r.boards[p.id];
+    let badge = "";
+    if (S.phase==="playing" && r){
+      if (!b) badge = `<span class="badge">관전</span>`;
+      else if (b.solved) badge = `<span class="badge win">✔ ${b.pats.length}번</span>`;
+      else if (b.done) badge = `<span class="badge fail">실패</span>`;
+      else badge = `<span class="badge">${b.pats.length}/${r.maxRows}</span>`;
+    }
+    const host = p.id===S.hostId ? `<span class="badge host">방장</span>` : "";
+    const board = (r && b && S.phase!=="lobby") ? miniHTML(b, r, S.phase==="result" || p.id===myId, false) : "";
+    return `<div class="opp ${p.id===myId?"me":""}">
+      <div class="opp-head"><span class="nm" style="color:${colorFor(p.id)}">${esc(p.name)}${p.id===myId?" (나)":""}</span>${host}${badge}<span class="sc">${p.score}점</span></div>
+      ${board}</div>`;
+  }).join("");
+}
+
+/* ================= 키보드 ================= */
+const KB_ROWS = ["qwertyuiop","asdfghjkl","Ezxcvbnm<"];
+function buildKeyboard(){
+  const kb = $("kb"); kb.innerHTML = "";
+  for (const row of KB_ROWS){
+    const r = document.createElement("div"); r.className = "kr";
+    for (const ch of row){
+      const k = document.createElement("button");
+      k.className = "key";
+      if (ch==="E"){ k.textContent = "입력"; k.classList.add("wide"); k.dataset.k = "Enter"; }
+      else if (ch==="<"){ k.textContent = "⌫"; k.classList.add("wide"); k.dataset.k = "Backspace"; }
+      else { k.textContent = ch; k.dataset.k = ch; }
+      k.addEventListener("click", e=>{ e.preventDefault(); press(k.dataset.k); k.blur(); });
+      r.appendChild(k);
+    }
+    kb.appendChild(r);
+  }
+}
+function renderKeys(){
+  const st = {};
+  const b = S && S.round && S.round.boards[myId];
+  if (b && b.words){
+    const rank = {b:1,y:2,g:3};
+    b.words.forEach((w,i)=>{ for (let j=0;j<w.length;j++){ const c=w[j], p=b.pats[i][j]; if (!st[c] || rank[p]>rank[st[c]]) st[c]=p; } });
+  }
+  $("kb").querySelectorAll(".key").forEach(k=>{
+    const c = k.dataset.k; k.classList.remove("g","y","b");
+    if (st[c]) k.classList.add(st[c]);
+  });
+}
+
+let typingTimer = null;
+function sendTyping(){
+  clearTimeout(typingTimer);
+  typingTimer = setTimeout(()=>send({t:"typing", n:cur.length}), 80);
+}
+
+function press(k){
+  if (!S || S.phase!=="playing" || !S.round) return;
+  const b = S.round.boards[myId];
+  if (!b || b.done || pending) return;
+  const len = S.round.len;
+  if (k==="Enter"){
+    if (cur.length < len){ toast(`${len}글자를 채워 주세요`); shakeRow(); return; }
+    if (!isValidWord(cur)){ toast("사전에 없는 단어예요"); shakeRow(); return; }
+    if (b.words && b.words.includes(cur)){ toast("이미 입력한 단어예요"); shakeRow(); return; }
+    pending = true;
+    send({t:"guess", word:cur});
+    return;
+  }
+  if (k==="Backspace"){ if (cur.length){ cur = cur.slice(0,-1); updateCurRow(); sendTyping(); } return; }
+  if (/^[a-z]$/.test(k) && cur.length < len){ cur += k; updateCurRow(); sendTyping(); }
+}
+
+document.addEventListener("keydown", e=>{
+  if ($("game").classList.contains("hidden")) return;
+  const tag = (document.activeElement && document.activeElement.tagName) || "";
+  if (tag==="INPUT" || tag==="TEXTAREA") return;
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  // 한글 입력 상태여도 동작하도록 e.code 사용
+  const m = /^Key([A-Z])$/.exec(e.code || "");
+  if (m){ e.preventDefault(); press(m[1].toLowerCase()); }
+  else if (e.key==="Enter" || e.code==="Enter" || e.code==="NumpadEnter"){ e.preventDefault(); press("Enter"); }
+  else if (e.key==="Backspace"){ e.preventDefault(); press("Backspace"); }
+});
+
+/* ================= UI 연결 ================= */
+$("createBtn").onclick = ()=>createRoom();
+$("joinBtn").onclick = joinRoom;
+$("codeInp").addEventListener("keydown", e=>{ if (e.key==="Enter" && !e.isComposing) joinRoom(); });
+$("nameInp").addEventListener("keydown", e=>{ if (e.key==="Enter" && !e.isComposing){ $("codeInp").value.trim() ? joinRoom() : createRoom(); } });
+$("chatForm").addEventListener("submit", e=>{
+  e.preventDefault();
+  const t = $("chatInp").value.trim(); if (!t) return;
+  send({t:"chat", text:t}); $("chatInp").value = "";
+  if (S && S.phase==="playing") $("chatInp").blur(); // 게임 중엔 보내고 바로 단어 입력으로 복귀
+});
+$("chatInp").addEventListener("keydown", e=>{ if (e.key==="Escape") $("chatInp").blur(); });
+$("copyBtn").onclick = async ()=>{
+  const link = location.origin + location.pathname + "?room=" + roomCode;
+  try{ await navigator.clipboard.writeText(link); toast("초대 링크를 복사했어요!"); }
+  catch(e){ prompt("이 링크를 복사해서 보내세요", link); }
+};
+window.addEventListener("resize", ()=>{ if (S) renderBoard(-1); });
+window.addEventListener("beforeunload", ()=>{ try{ peer && peer.destroy(); }catch(e){} });
+
+(function init(){
+  const saved = load("wd_name"); if (saved) $("nameInp").value = saved;
+  const q = new URLSearchParams(location.search).get("room");
+  if (q){
+    $("codeInp").value = q.toUpperCase().slice(0,5);
+    $("createBtn").classList.remove("primary");
+    $("joinBtn").classList.add("primary");
+    $("entryMsg").textContent = "초대받은 방이에요. 닉네임을 쓰고 ‘참가’를 누르세요.";
+  }
+  loadDict();
+})();
+</script>
+</body>
+</html>
