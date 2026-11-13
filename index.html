@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>워들 대결</title>
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script src="https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js"></script>
 <style>
 :root{
   --bg:#121417; --panel:#1b1e23; --panel2:#23272e; --line:#343a43; --text:#e8eaed; --dim:#8b929c;
@@ -525,7 +526,10 @@ function hostRemove(id){
   hostCheckEnd();
 }
 
-/* ================= 연결 ================= */
+/* ================= 연결 (PeerJS 직접 연결 + 중계 서버 자동 전환) ================= */
+const MQ_BROKERS = ["wss://broker.hivemq.com:8884/mqtt", "wss://test.mosquitto.org:8081"];
+const MQ_ROOT = "wordleduel/v1/";
+
 function getName(){
   const n = $("nameInp").value.trim();
   if (!n){ $("entryMsg").textContent = "닉네임을 입력하세요"; $("nameInp").focus(); return null; }
@@ -536,65 +540,179 @@ function setEntryBusy(b, msg){
   $("createBtn").disabled = b; $("joinBtn").disabled = b;
   $("entryMsg").textContent = msg||"";
 }
-function checkPeerLib(){
-  if (typeof Peer === "undefined"){ setEntryBusy(false, "연결 라이브러리를 불러오지 못했어요. 새로고침해 보세요."); return false; }
+function netAvailable(){
+  if (typeof Peer === "undefined" && typeof mqtt === "undefined"){
+    setEntryBusy(false, "연결 라이브러리를 불러오지 못했어요. 새로고침해 보세요."); return false;
+  }
+  return true;
+}
+function newPeer(id){
+  return new Promise((res, rej)=>{
+    let done = false;
+    const p = id ? new Peer(id, PEER_OPTS) : new Peer(PEER_OPTS);
+    const t = setTimeout(()=>{ if(!done){ done=true; try{p.destroy();}catch(_){} rej(new Error("timeout")); } }, 10000);
+    p.on("open", ()=>{ if(!done){ done=true; clearTimeout(t); res(p); } });
+    p.on("error", e=>{ if(!done){ done=true; clearTimeout(t); try{p.destroy();}catch(_){} rej(e); } });
+  });
+}
+function mqConnect(url, opts){
+  return new Promise((res, rej)=>{
+    if (typeof mqtt === "undefined"){ rej(new Error("nomqtt")); return; }
+    let done = false;
+    const c = mqtt.connect(url, Object.assign({connectTimeout:7000, reconnectPeriod:2000,
+      clientId:"wd"+Math.random().toString(36).slice(2,12), clean:true}, opts||{}));
+    c.on("connect", ()=>{ if(!done){ done=true; res(c); } });
+    c.on("error", e=>{ if(!done){ done=true; try{c.end(true);}catch(_){} rej(e); } });
+    setTimeout(()=>{ if(!done){ done=true; try{c.end(true);}catch(_){} rej(new Error("timeout")); } }, 8000);
+  });
+}
+function parseMsg(buf){ try{ return JSON.parse(buf.toString()); }catch(_){ return null; } }
+
+/* ---------- 방장 ---------- */
+async function createRoom(){
+  const name = getName(); if (!name || !netAvailable()) return;
+  setEntryBusy(true, "방을 만드는 중…");
+  let code = null, pr = null;
+  if (typeof Peer !== "undefined"){
+    for (let tries=0; tries<5; tries++){
+      code = genCode();
+      try{ pr = await newPeer(PREFIX + code); break; }
+      catch(e){ pr = null; if (!(e && e.type==="unavailable-id")) break; }
+    }
+  }
+  if (!code) code = genCode();
+  if (!pr && typeof mqtt === "undefined"){ setEntryBusy(false, "방을 만들지 못했어요. 인터넷 연결을 확인하고 다시 해 주세요."); return; }
+
+  isHost = true; roomCode = code; myId = pr ? pr.id : "h-" + code;
+  if (pr){
+    peer = pr;
+    pr.on("connection", conn=>{
+      conn.on("data", d=>hostHandle(conn.peer, d, conn));
+      conn.on("close", ()=>hostRemove(conn.peer));
+      conn.on("error", ()=>hostRemove(conn.peer));
+    });
+    pr.on("disconnected", ()=>{ try{ pr.reconnect(); }catch(e){} });
+    pr.on("error", e=>{ if (e.type!=="peer-unavailable") console.warn("peer", e.type); });
+  }
+  startHostRelay(code);
+
+  H.players.set(myId, {name, score:0, conn:null, joinedAt:Date.now()});
+  enterGame();
+  onMessage({t:"welcome", id:myId, chat:[], code});
+  sysMsg(`방이 만들어졌어요. 초대 링크를 친구들에게 보내 주세요!`);
+  hostBroadcastState();
+}
+
+/* 중계 서버: 직접 연결이 안 되는 친구는 이쪽으로 들어옴 */
+const relayClients = new Map();   // id -> {c, last}
+function startHostRelay(code){
+  const root = MQ_ROOT + code;
+  for (const url of MQ_BROKERS){
+    mqConnect(url).then(c=>{
+      c.subscribe(root + "/c", {qos:0});
+      c.on("message", (tp, buf)=>{
+        const d = parseMsg(buf);
+        if (!d || typeof d.id !== "string" || d.id.length > 40) return;
+        if (d.t === "bye"){ const r0 = relayClients.get(d.id); if (r0 && r0.c === c){ relayClients.delete(d.id); hostRemove(d.id); } return; }
+        let rc = relayClients.get(d.id);
+        if (rc && rc.c !== c) return;   // 같은 친구 메시지가 다른 중계 서버로 중복 도착하면 무시
+        if (d.t === "ping"){ if (rc) rc.last = Date.now(); return; }
+        if (!d.m || typeof d.m !== "object") return;
+        if (!rc){
+          if (d.m.t !== "hello" || H.players.has(d.id)) return;
+          rc = {c, last:Date.now()}; relayClients.set(d.id, rc);
+        }
+        rc.last = Date.now();
+        const conn = { open:true, peer:d.id, send:(msg)=>{ try{ rc.c.publish(root + "/to/" + d.id, JSON.stringify(msg), {qos:0}); }catch(_){} } };
+        hostHandle(d.id, d.m, conn);
+      });
+      // 중계로 들어온 친구에게 "방장 살아 있음" 신호
+      setInterval(()=>{ if (relayClients.size) try{ c.publish(root + "/h", '{"t":"hb"}', {qos:0}); }catch(_){} }, 2500);
+    }).catch(()=>{});
+  }
+  setInterval(()=>{
+    const now = Date.now();
+    for (const [id, rc] of relayClients) if (now - rc.last > 10000){ relayClients.delete(id); hostRemove(id); }
+  }, 1500);
+}
+
+/* ---------- 참가자 ---------- */
+async function joinRoom(){
+  const name = getName(); if (!name || !netAvailable()) return;
+  const code = normCode($("codeInp").value); $("codeInp").value = code;
+  if (code.length!==5){ $("entryMsg").textContent = "5자리 방 코드를 입력하세요"; return; }
+  setEntryBusy(true, "방에 연결하는 중… (최대 15초 정도 걸릴 수 있어요)");
+  roomCode = code;
+  let ok = false;
+  if (typeof Peer !== "undefined") ok = await joinDirect(code, name);
+  if (!ok && typeof mqtt !== "undefined"){
+    setEntryBusy(true, "직접 연결이 안 돼서 중계 서버로 연결하는 중…");
+    for (const url of MQ_BROKERS){ if (await joinRelay(code, name, url)){ ok = true; break; } }
+  }
+  if (!ok) setEntryBusy(false, `${code} 방에 들어갈 수 없어요. 코드가 맞는지, 방장이 게임 창을 켜 두고 있는지 확인해 주세요.`);
+}
+
+async function joinDirect(code, name){
+  let pr;
+  try{ pr = await newPeer(null); }catch(_){ return false; }
+  const conn = await new Promise(res=>{
+    let done = false;
+    const c = pr.connect(PREFIX + code, {reliable:true});
+    const t = setTimeout(()=>{ if(!done){ done=true; res(null); } }, 7000);
+    c.on("open", ()=>{ if(!done){ done=true; clearTimeout(t); res(c); } });
+    c.on("iceStateChanged", st=>{ if (st==="failed" && !done){ done=true; clearTimeout(t); res(null); } });
+    pr.on("error", ()=>{ if(!done){ done=true; clearTimeout(t); res(null); } });
+  });
+  if (!conn){ try{ pr.destroy(); }catch(_){} return false; }
+  peer = pr; hostConn = conn;
+  conn.on("data", onMessage);
+  conn.on("close", hostLost);
+  pr.on("disconnected", ()=>{ try{ pr.reconnect(); }catch(e){} });
+  conn.send({t:"hello", name});
   return true;
 }
 
-function createRoom(tries=0){
-  const name = getName(); if (!name || !checkPeerLib()) return;
-  setEntryBusy(true, "방을 만드는 중…");
-  const code = genCode();
-  const pr = new Peer(PREFIX + code, PEER_OPTS);
-  pr.on("open", id=>{
-    peer = pr; isHost = true; myId = id; roomCode = code;
-    H.players.set(myId, {name, score:0, conn:null, joinedAt:Date.now()});
-    enterGame();
-    onMessage({t:"welcome", id:myId, chat:[], code});
-    sysMsg(`방이 만들어졌어요. 초대 링크를 친구들에게 보내 주세요!`);
-    hostBroadcastState();
-  });
-  pr.on("connection", conn=>{
-    conn.on("data", d=>hostHandle(conn.peer, d, conn));
-    conn.on("close", ()=>hostRemove(conn.peer));
-    conn.on("error", ()=>hostRemove(conn.peer));
-  });
-  pr.on("disconnected", ()=>{ try{ pr.reconnect(); }catch(e){} });
-  pr.on("error", e=>{
-    if (e.type==="unavailable-id" && tries<5){ pr.destroy(); createRoom(tries+1); return; }
-    if (!isHost) setEntryBusy(false, "방을 만들지 못했어요: " + e.type);
-    else if (e.type!=="peer-unavailable") toast("연결 오류: " + e.type);
+function joinRelay(code, name, url){
+  return new Promise(async res=>{
+    const id = "r" + Math.random().toString(36).slice(2,12);
+    const root = MQ_ROOT + code;
+    let c;
+    try{ c = await mqConnect(url, {will:{topic:root+"/c", payload:JSON.stringify({t:"bye", id}), qos:0, retain:false}}); }
+    catch(_){ res(false); return; }
+    let got = false, lastHost = Date.now(), lost = false;
+    const conn = { open:true, send:(msg)=>{ try{ c.publish(root+"/c", JSON.stringify({id, m:msg}), {qos:0}); }catch(_){} } };
+    c.subscribe([root + "/to/" + id, root + "/h"], {qos:0});
+    c.on("message", (tp, buf)=>{
+      lastHost = Date.now();
+      if (tp === root + "/h") return;
+      const d = parseMsg(buf); if (!d) return;
+      if (!got && d.t === "welcome"){
+        got = true; clearInterval(helloTimer);
+        hostConn = conn;
+        sysLocalLater("중계 서버로 연결됐어요 (조금 느릴 수 있어요)");
+      }
+      if (got) onMessage(d);
+    });
+    let tries = 0;
+    const hello = ()=>conn.send({t:"hello", name});
+    const helloTimer = setInterval(()=>{
+      if (++tries > 8){ clearInterval(helloTimer); if (!got){ try{ c.publish(root+"/c", JSON.stringify({t:"bye", id})); c.end(true); }catch(_){} res(false); } return; }
+      hello();
+    }, 1000);
+    hello();
+    setInterval(()=>{
+      if (!got || lost) return;
+      try{ c.publish(root+"/c", JSON.stringify({t:"ping", id}), {qos:0}); }catch(_){}
+      if (Date.now() - lastHost > 12000){ lost = true; conn.open = false; hostLost(); }
+    }, 2500);
+    window.addEventListener("beforeunload", ()=>{ try{ c.publish(root+"/c", JSON.stringify({t:"bye", id})); }catch(_){} });
+    const wait = setInterval(()=>{ if (got){ clearInterval(wait); res(true); } }, 100);
   });
 }
-
-function joinRoom(){
-  const name = getName(); if (!name || !checkPeerLib()) return;
-  const code = normCode($("codeInp").value); $("codeInp").value = code;
-  if (code.length!==5){ $("entryMsg").textContent = "5자리 방 코드를 입력하세요"; return; }
-  setEntryBusy(true, "방에 연결하는 중…");
-  const pr = new Peer(PEER_OPTS);
-  let opened = false;
-  const fail = (m)=>{ if (opened) return; try{pr.destroy();}catch(e){} setEntryBusy(false, m); };
-  let found = false;
-  const to = setTimeout(()=>fail(found
-    ? "방은 찾았는데 네트워크가 막혀서 연결을 못 했어요. 와이파이 ↔ 데이터를 바꿔서 다시 해 보세요."
-    : "연결 시간이 초과됐어요. 방장이 게임 창을 켜 두고 있는지 확인해 주세요."), 20000);
-  pr.on("open", ()=>{
-    const conn = pr.connect(PREFIX + code, {reliable:true});
-    conn.on("iceStateChanged", st=>{ found = true; if (st==="failed") { clearTimeout(to); fail("방은 찾았는데 네트워크가 막혀서 연결을 못 했어요. 와이파이 ↔ 데이터를 바꿔서 다시 해 보세요."); } });
-    conn.on("open", ()=>{
-      opened = true; clearTimeout(to);
-      peer = pr; hostConn = conn; roomCode = code;
-      conn.send({t:"hello", name});
-    });
-    conn.on("data", onMessage);
-    conn.on("close", ()=>{ if (opened){ toast("방장과 연결이 끊겼어요", 4000); sysLocal("방장과 연결이 끊겼어요. 새로고침 후 다시 참가해 주세요."); } });
-  });
-  pr.on("disconnected", ()=>{ try{ pr.reconnect(); }catch(e){} });
-  pr.on("error", e=>{
-    if (e.type==="peer-unavailable"){ clearTimeout(to); fail(`${code} 방을 찾을 수 없어요. 코드가 맞는지, 방장이 게임 창을 켜 두고 있는지 확인해 주세요.`); }
-    else if (!opened){ clearTimeout(to); fail("연결 오류: " + e.type); }
-  });
+function sysLocalLater(t){ setTimeout(()=>sysLocal(t), 300); }
+function hostLost(){
+  toast("방장과 연결이 끊겼어요", 4000);
+  sysLocal("방장과 연결이 끊겼어요. 방장이 다시 방을 만들면 새 코드로 참가해 주세요.");
 }
 
 function enterGame(){
