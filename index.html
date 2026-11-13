@@ -92,9 +92,13 @@ header .title{font-weight:800;font-size:18px;margin-right:6px}
 #kb{width:100%;max-width:520px;user-select:none}
 .kr{display:flex;gap:5px;justify-content:center;margin-bottom:6px}
 .key{flex:1;max-width:44px;height:52px;border:none;border-radius:6px;background:#4b525c;font-weight:700;font-size:15px;text-transform:uppercase}
-.key.wide{max-width:70px;flex:1.5;font-size:12px}
+.key.wide{max-width:70px;flex:1.5;font-size:12px;white-space:nowrap;min-width:44px}
 .key.g{background:var(--g)} .key.y{background:var(--y)} .key.b{background:#2a2e34;color:#6b7280}
 .key:active{filter:brightness(1.2)}
+.kb-ko .key{font-size:17px;max-width:40px}
+.kb-ko .kr.dbl .key{height:40px;font-size:15px;max-width:38px;background:#3d434c}
+#koPreview{min-height:26px;margin:-6px 0 12px;font-size:18px;font-weight:700;color:var(--dim)}
+#koPreview b{color:var(--text)}
 
 /* 대기/결과 패널 */
 .panel{width:100%;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:14px}
@@ -191,6 +195,7 @@ table.rank th{color:var(--dim);font-weight:600;font-size:12px}
       <div id="panel" class="panel hidden"></div>
       <div id="playArea" class="center" style="width:100%">
         <div id="board"></div>
+        <div id="koPreview" class="hidden"></div>
         <div id="kb"></div>
       </div>
     </div>
@@ -213,7 +218,74 @@ table.rank th{color:var(--dim);font-weight:600;font-size:12px}
 <script>
 /* ================= 단어 ================= */
 const ANSWERS = {"5":["about","above","actor","adult","after","again","agent","agree","ahead","alarm","album","alert","alive","allow","alone","along","angel","anger","angle","angry","apple","apply","arena","argue","arise","armor","array","arrow","aside","asset","audio","avoid","award","aware","badge","baker","basic","beach","beard","beast","begin","being","below","bench","berry","birth","black","blade","blame","blank","blast","blend","bless","blind","block","blood","bloom","board","boast","bonus","boost","booth","brain","brand","brave","bread","break","brick","bride","brief","bring","broad","brown","brush","build","bunch","burst","buyer","cabin","cable","camel","candy","cargo","carry","catch","cause","chain","chair","chalk","charm","chart","chase","cheap","check","cheek","cheer","chess","chest","chief","child","chill","choir","civil","claim","class","clean","clear","clerk","click","cliff","climb","clock","close","cloth","cloud","coach","coast","color","comic","coral","couch","count","court","cover","crack","craft","crane","crash","crazy","cream","crime","crisp","cross","crowd","crown","cruel","crush","curve","cycle","daily","dance","delay","depth","diary","dirty","doubt","dough","draft","drama","dream","dress","drink","drive","eager","early","earth","eight","elbow","elder","elect","empty","enemy","enjoy","enter","entry","equal","error","essay","event","every","exact","exist","extra","faith","false","fancy","fault","feast","fence","fever","field","fifty","fight","final","flame","flash","fleet","float","flood","floor","flour","fluid","focus","force","forge","forty","forum","frame","fresh","front","frost","fruit","funny","ghost","giant","given","glass","globe","glory","glove","grace","grade","grain","grand","grant","grape","graph","grass","great","green","greet","grief","group","guard","guess","guest","guide","habit","happy","harsh","heart","heavy","hello","honey","honor","horse","hotel","house","human","humor","hurry","ideal","image","index","inner","input","issue","ivory","jelly","jewel","joint","judge","juice","knife","knock","label","labor","large","laser","later","laugh","layer","learn","lemon","level","light","limit","local","logic","loose","lover","lucky","lunch","magic","major","maker","march","match","maybe","mayor","medal","media","mercy","metal","meter","midst","minor","model","money","month","moral","motor","mount","mouse","mouth","movie","music","nerve","never","night","noble","noise","north","novel","nurse","ocean","offer","often","olive","onion","opera","orbit","order","other","outer","owner","paint","panel","panic","paper","party","pasta","peace","pearl","phase","phone","photo","piano","piece","pilot","pitch","pizza","place","plain","plane","plant","plate","point","polar","pound","power","press","price","pride","prime","print","prize","proof","proud","pupil","puppy","queen","quick","quiet","quite","radio","raise","range","rapid","ratio","reach","react","ready","realm","relax","reply","rider","ridge","right","risky","rival","river","robot","rocky","rough","round","route","royal","rural","salad","sauce","scale","scene","scent","score","scout","sense","serve","seven","shade","shake","shape","share","shark","sharp","sheep","sheet","shelf","shell","shift","shine","shirt","shock","shoot","shore","short","shout","sight","skill","skirt","sleep","slice","slide","smart","smell","smile","smoke","snake","solid","solve","sorry","sound","south","space","spare","speak","speed","spell","spend","spice","spine","spoon","sport","spray","staff","stage","stair","stamp","stand","start","state","steak","steam","steel","stick","still","stock","stone","store","storm","story","stove","strip","study","style","sugar","sunny","super","sweet","swing","sword","table","taste","teach","thank","theme","there","thick","thing","think","third","three","throw","thumb","tiger","tight","timer","tired","title","toast","today","tooth","topic","total","touch","tough","tower","trace","track","trade","trail","train","treat","trend","trial","tribe","trick","truck","truly","trust","truth","tulip","twice","uncle","under","union","unity","until","upper","upset","urban","usage","usual","valid","value","video","virus","visit","vital","vivid","vocal","voice","waste","watch","water","wheel","where","which","while","white","whole","woman","world","worry","worth","would","write","wrong","yield","young","youth","zebra"],"6":["absorb","accept","access","action","active","actual","admire","advice","afford","agency","agenda","almost","always","amount","animal","annual","answer","anyone","appeal","appear","arrive","artist","assist","attack","attend","autumn","avenue","backup","banana","barrel","basket","battle","beauty","become","before","behave","behind","belief","belong","beside","better","beyond","bishop","bitter","border","borrow","bottle","bottom","bounce","branch","breath","breeze","bridge","bright","broken","bubble","bucket","budget","bullet","bundle","burden","butter","button","camera","campus","candle","cannon","canvas","carbon","career","carpet","castle","casual","cattle","center","chance","change","charge","cheese","cherry","choice","choose","church","circle","client","closet","coffee","collar","column","combat","comedy","common","cookie","copper","corner","cotton","county","couple","course","cousin","cradle","create","credit","crisis","critic","cruise","custom","damage","danger","dealer","debate","decade","decide","defeat","defend","degree","demand","depend","desert","design","desire","detail","device","dinner","direct","divide","doctor","dollar","domain","donkey","double","dragon","drawer","driver","during","easily","editor","effect","effort","eleven","emerge","empire","enable","energy","engine","enough","ensure","entire","escape","estate","evolve","expand","expect","expert","export","fabric","factor","family","famous","farmer","father","finger","finish","flight","flower","follow","forest","forget","formal","fossil","friend","frozen","future","galaxy","garage","garden","garlic","gather","gentle","ginger","global","golden","govern","guitar","hammer","handle","harbor","health","heaven","height","helmet","hidden","hockey","honest","horror","humble","hunger","hunter","island","jacket","jungle","junior","kettle","kidney","kitten","ladder","launch","lawyer","leader","league","legend","lesson","letter","liquid","listen","little","lizard","lovely","magnet","manner","marble","margin","market","master","matter","meadow","medium","member","memory","mental","mentor","method","middle","minute","mirror","mobile","modern","moment","monkey","mother","motion","muscle","museum","narrow","nation","native","nature","nearby","nearly","needle","nephew","nickel","normal","notice","number","object","office","online","orange","origin","oxygen","oyster","palace","parade","parent","parrot","peanut","pencil","people","pepper","period","person","pickle","pillow","planet","player","please","plenty","pocket","poetry","police","policy","potato","powder","prayer","pretty","prince","profit","public","puzzle","rabbit","racing","random","rather","reader","really","reason","recipe","record","reduce","reform","region","relief","remain","remote","repair","repeat","report","rescue","result","return","reveal","reward","rhythm","ribbon","rocket","rubber","saddle","safety","salmon","sample","school","screen","script","search","season","second","secret","select","senior","series","settle","shadow","shower","signal","silent","silver","simple","singer","single","sister","sketch","slight","smooth","soccer","social","source","speech","spider","spirit","spread","spring","square","stable","statue","steady","strain","stream","street","stress","strike","string","strong","studio","submit","sudden","summer","summit","sunset","supply","surely","survey","switch","symbol","system","tablet","talent","target","temple","tender","tennis","thirty","thread","throne","ticket","timber","tomato","tongue","travel","treaty","tunnel","turkey","turtle","twelve","unique","update","useful","valley","velvet","violin","vision","volume","wallet","walnut","wander","warmth","wealth","weapon","weekly","weight","window","winner","winter","wisdom","wizard","wonder","wooden","yellow","zipper"],"7":["ability","absence","academy","account","achieve","address","advance","airline","airport","amazing","ancient","anxiety","apology","appoint","arrange","article","attempt","attract","average","balance","balloon","bandage","banking","bargain","barrier","battery","bedroom","believe","benefit","bicycle","billion","biscuit","blanket","brother","cabinet","capital","captain","caption","capture","careful","carrier","catalog","ceiling","central","century","certain","chamber","channel","chapter","charity","chicken","chimney","circuit","citizen","classic","climate","cluster","coconut","collect","college","comfort","command","comment","company","compare","compass","complex","concept","concert","connect","consist","contact","contain","content","contest","context","control","convert","correct","costume","cottage","council","counter","country","courage","cracker","crystal","culture","curious","current","cushion","dancing","deliver","density","deposit","desktop","despite","dessert","diamond","digital","dignity","display","distant","dolphin","drawing","dynamic","eastern","economy","edition","element","emotion","endless","evening","example","explain","explore","express","extreme","factory","faculty","fashion","feather","feature","federal","fiction","fifteen","finance","fitness","foreign","forever","fortune","forward","freedom","gallery","garbage","general","genuine","giraffe","glasses","gravity","grocery","habitat","harmony","harvest","healthy","hearing","helpful","highway","history","holiday","horizon","housing","however","hundred","husband","imagine","improve","include","initial","inquiry","insight","inspire","install","instant","journey","justice","kitchen","landing","laundry","leather","lecture","library","license","limited","machine","magical","mailbox","manager","mansion","massive","maximum","meaning","measure","medical","meeting","mention","message","million","mineral","minimum","mission","mistake","mixture","monitor","monster","morning","musical","mystery","natural","network","neutral","nothing","nuclear","obvious","octopus","officer","opinion","orchard","organic","outdoor","outline","package","painter","panther","parking","partner","passage","passion","patient","pattern","payment","penguin","pension","percent","perfect","perform","perhaps","picture","pilgrim","pioneer","plastic","pleased","popular","portion","predict","premium","prepare","present","prevent","primary","printer","privacy","private","problem","process","produce","product","profile","program","project","promise","protect","protein","provide","publish","pumpkin","pyramid","quality","quarter","rainbow","reality","receipt","receive","recover","reflect","regular","release","remains","request","require","reserve","respect","respond","restore","revenue","revolve","rooster","routine","sailing","satisfy","scholar","science","scratch","section","segment","serious","service","session","setting","shelter","sheriff","silence","similar","sincere","society","soldier","someone","special","sponsor","station","stomach","storage","strange","stretch","student","subject","success","suggest","summary","sunrise","support","supreme","surface","surgeon","survive","suspect","sustain","teacher","tension","theater","therapy","thought","thunder","tonight","tornado","totally","tourist","towards","traffic","trouble","trumpet","uniform","unknown","unusual","upgrade","utility","vaccine","variety","vehicle","venture","version","veteran","village","vintage","virtual","visible","visitor","volcano","wedding","weekend","welcome","western","whisper","without","witness","writing"],"8":["absolute","academic","accident","accurate","activity","actually","addition","adequate","advanced","aircraft","alphabet","although","analysis","announce","anything","anywhere","apparent","appetite","approach","approval","argument","artistic","assembly","athletic","attitude","audience","baseball","bathroom","behavior","birthday","blizzard","boundary","building","business","calendar","campaign","capacity","cardinal","carnival","category","ceremony","champion","chemical","children","chipmunk","circular","civilian","clothing","collapse","complete","computer","concrete","conflict","consider","constant","consumer","continue","contract","convince","corridor","creative","critical","crossing","cucumber","customer","database","daughter","deadline","decision","defender","delicate","delivery","describe","designer","detailed","diameter","dinosaur","director","disaster","discount","discover","distance","district","document","dominant","doorbell","download","dramatic","dumpling","economic","educated","election","electric","elephant","elevator","employee","engineer","enormous","entrance","envelope","equation","estimate","evidence","exchange","exercise","exposure","external","facility","familiar","festival","fighting","football","forecast","fountain","fragment","frequent","friendly","frontier","function","gardener","generate","generous","gigantic","graduate","graphics","grateful","guardian","guidance","handsome","hardware","headline","heritage","highland","historic","homework","hospital","humidity","identity","illusion","incident","increase","indicate","industry","infinite","innocent","instance","instinct","interest","internal","internet","investor","keyboard","landmark","language","laughter","lavender","learning","leftover","lifetime","location","magnetic","maintain","majority","marathon","material","medicine","memorial","merchant","midnight","military","minister","minority","mosquito","mountain","movement","multiple","mushroom","national","negative","neighbor","notebook","numerous","obstacle","occasion","offering","official","opponent","opposite","ordinary","organize","original","overcome","painting","parallel","passport","password","patience","peaceful","peculiar","pinnacle","platform","pleasant","plumbing","politics","portrait","positive","possible","powerful","practice","precious","presence","preserve","pressure","previous","princess","priority","probably","producer","progress","property","proposal","prospect","protocol","provider","province","purchase","question","quotient","railroad","rational","reaction","receiver","recovery","regional","relation","relative","remember","reminder","research","resident","resource","response","restless","reversal","sandwich","scenario","schedule","scissors","sculptor","security","sentence","separate","sequence","shoulder","sidewalk","simplify","skeleton","slippery","snowball","snowfall","software","solution","somebody","somewhat","southern","spectrum","splendid","sporting","squirrel","standard","starfish","strategy","strength","struggle","stunning","suburban","suitcase","sunlight","sunshine","superior","supplier","surprise","surround","survival","symphony","tangible","teaspoon","teenager","telegram","template","terminal","textbook","thinking","thousand","together","tomorrow","tortoise","tracking","training","transfer","treasure","triangle","tropical","umbrella","universe","unlikely","vacation","valuable","variable","vertical","vineyard","volcanic","warranty","weakness","whatever","whenever","wildlife","wireless","workshop","yourself"]};
+const ANSWERS_KO = {"5":["사과","수박","딸기","레몬","키위","망고","감자","양파","마늘","호박","상추","버섯","김치","소금","식초","라면","국수","우동","순대","만두","갈비","치킨","초밥","과자","사탕","계란","녹차","홍차","콜라","생수","식혜","호떡","도넛","젤리","학교","교실","의자","가방","숙제","시험","친구","과제","발표","수업","학기","우산","지갑","거울","수건","치약","샴푸","이불","침대","서랍","커튼","계단","부엌","거실","지붕","마당","택시","트럭","터널","육교","여행","호텔","텐트","낚시","수영","썰매","시장","서점","교회","시청","회사","의사","약사","화가","작가","판사","농부","목수","이웃","가족","형제","언니","아들","사촌","어른","노인","사람","남자","소년","신부","편지","엽서","사진","추억","축하","감사","사랑","우정","기쁨","용기","비밀","실수","노력","실패","기회","시간","하늘","구름","바람","번개","장마","태풍","홍수","가뭄","지진","안개","이슬","봄비","여름","가을","겨울","아침","저녁","새벽","오늘","내일","주말","폭포","계곡","열매","씨앗","줄기","잔디","자갈","바위","해변","사막","장미","거위","돼지","염소","사슴","늑대","표범","기린","판다","물개","상어","문어","낙지","미역","연어","참치","갈치","멸치","참새","백조","악어","이빨","가슴","배꼽","무릎","수염","하품","기침","감기","두통","치과","붕대","점퍼","교복","단추","반지","팔찌","향수","악기","첼로","드럼","나팔","장구","박수","소설","시집","일기","잡지","게임","퍼즐","바둑","장기","로봇","팽이","구슬","축구","농구","탁구","골프","씨름","경기","선수","우승","메달","점수","서울","부산","대전","독도","미국","인도","태양","혜성","로켓","수학","국어","영어","역사","사회","미술","체육","분수","도형","자석","전기","온도","날씨","계절","공기","산소","거품","가격","세금","쿠폰","주문","배달","택배","포장","상자","봉투","이름","문자","메일","그림","가위","종이","소풍","고향","시골","마을","동네","빌라","주택","공주","해적","요정","유령","천사","악마","보물","꼴찌"],"6":["바나나","참외","고구마","당근","토마토","간장","설탕","짬뽕","냉면","수제비","튀김","김밥","떡국","케이크","사이다","와플","칠판","책상","공책","연필","지우개","필통","성적","방학","졸업","입학","학생","급식","출석","키보드","마우스","모니터","스피커","배터리","카메라","다리미","안경","열쇠","칫솔","식탁","옷장","창문","공항","사거리","주유소","운전","여권","캠핑","등산","약국","은행","식당","빵집","꽃집","극장","성당","공장","경찰","군인","요리사","감독","손님","아버지","어머니","동생","삼촌","남편","연인","신랑","생일","선물","앨범","약속","행복","슬픔","걱정","희망","평화","정의","진실","성공","운명","인생","세월","햇빛","달빛","별빛","무지개","천둥","소나기","화산","얼음","점심","낮잠","평일","달력","강물","산책","숲속","꽃잎","풀밭","동굴","갯벌","초원","들판","논밭","언덕","절벽","화분","개나리","벚꽃","튤립","국화","소나무","대나무","단풍","너구리","코끼리","다시마","공작","두루미","메뚜기","개구리","공룡","얼굴","눈썹","입술","손목","손톱","발목","심장","위장","근육","웃음","눈물","재채기","티셔츠","양복","장갑","양말","신발","장화","잠옷","한복","주머니","허리띠","머리띠","음악","피아노","합창","공연","영화","드라마","만화","동화","신문","광고","방송","라디오","유튜브","풍선","인형","블록","테니스","볼링","권투","육상","심판","트로피","홈런","광주","인천","울산","제주도","한강","남산","중국","일본","영국","독일","캐나다","러시아","행성","위성","과학","덧셈","뺄셈","곱셈","직선","곡선","그래프","실험","에너지","동전","통장","용돈","할인","전화","물감","테이프","스티커","달걀","과외","골목","아파트","성벽","왕자","괴물","도깨비","상장","일등"],"7":["오렌지","시금치","옥수수","된장","고추장","도시락","불고기","햄버거","돈가스","순두부","꽈배기","마카롱","교과서","동아리","기숙사","대학교","교수님","컴퓨터","노트북","프린터","이어폰","헤드폰","휴대폰","세탁기","청소기","에어컨","현관","베란다","정원","울타리","자동차","지하철","비행기","자전거","기차역","주차장","병원","우체국","소방서","세탁소","공원","놀이터","법원","사무실","간호사","변호사","회계사","우주인","직원","부모님","할머니","어린이","고드름","수요일","토요일","강아지","고양이","햄스터","거북이","앵무새","병아리","호랑이","코뿔소","고릴라","캥거루","코알라","펭귄","돌고래","오징어","고등어","독수리","비둘기","까마귀","부엉이","올빼미","잠자리","지렁이","도마뱀","목소리","체온계","넥타이","목도리","슬리퍼","플루트","가야금","콘서트","관객","주사위","마라톤","응원","골키퍼","지리산","프랑스","스페인","브라질","이집트","은하수","지구본","그림자","월급","계산기","사진기","도화지","학원","광장","원룸","초가집","궁궐","마법사","지도책"],"8":["복숭아","콩나물","참기름","들기름","짜장면","칼국수","떡볶이","비빔밥","주먹밥","스파게티","미역국","감자탕","해장국","삼계탕","부대찌개","초콜릿","요구르트","막걸리","수정과","팥빙수","붕어빵","도서관","충전기","냉장고","선풍기","드라이기","오토바이","정류장","신호등","관광","나침반","경찰서","미용실","문구점","디자이너","과학자","사장님","청소년","거짓말","눈사람","눈송이","밤하늘","일요일","화요일","목요일","금요일","시냇물","나뭇잎","해바라기","민들레","진달래","무궁화","코스모스","금붕어","당나귀","다람쥐","달팽이","올챙이","눈동자","팔꿈치","손가락","엉덩이","발가락","발바닥","반창고","원피스","수영복","목걸이","귀걸이","윷놀이","줄넘기","태권도","백두산","한라산","나눗셈","사각형","현미경","카드값","영수증","저금통","인터넷","크레파스","학예회","방과후","기와집","왕관"]};
 const MAX_ROWS = {5:6, 6:7, 7:7, 8:8};
+/* ================= 한국어 (자모 단위) ================= */
+const K_CHO  = "ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ";
+const K_JUNG = "ㅏㅐㅑㅒㅓㅔㅕㅖㅗㅘㅙㅚㅛㅜㅝㅞㅟㅠㅡㅢㅣ";
+const K_JONG = " ㄱㄲㄳㄴㄵㄶㄷㄹㄺㄻㄼㄽㄾㄿㅀㅁㅂㅄㅅㅆㅇㅈㅊㅋㅌㅍㅎ";
+/* 겹모음·겹받침 → 기본 자모 (쌍자음은 한 칸으로 유지) */
+const K_SPLIT = {"ㅘ":"ㅗㅏ","ㅙ":"ㅗㅐ","ㅚ":"ㅗㅣ","ㅝ":"ㅜㅓ","ㅞ":"ㅜㅔ","ㅟ":"ㅜㅣ","ㅢ":"ㅡㅣ",
+  "ㄳ":"ㄱㅅ","ㄵ":"ㄴㅈ","ㄶ":"ㄴㅎ","ㄺ":"ㄹㄱ","ㄻ":"ㄹㅁ","ㄼ":"ㄹㅂ","ㄽ":"ㄹㅅ","ㄾ":"ㄹㅌ","ㄿ":"ㄹㅍ","ㅀ":"ㄹㅎ","ㅄ":"ㅂㅅ"};
+const K_VOWELS = new Set("ㅏㅐㅑㅒㅓㅔㅕㅖㅗㅛㅜㅠㅡㅣ");
+const K_CONS = new Set("ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ");
+const K_ALL = new Set([...K_VOWELS, ...K_CONS]);
+const K_V_JOIN = {"ㅗㅏ":"ㅘ","ㅗㅐ":"ㅙ","ㅗㅣ":"ㅚ","ㅜㅓ":"ㅝ","ㅜㅔ":"ㅞ","ㅜㅣ":"ㅟ","ㅡㅣ":"ㅢ"};
+const K_J_JOIN = {"ㄱㅅ":"ㄳ","ㄴㅈ":"ㄵ","ㄴㅎ":"ㄶ","ㄹㄱ":"ㄺ","ㄹㅁ":"ㄻ","ㄹㅂ":"ㄼ","ㄹㅅ":"ㄽ","ㄹㅌ":"ㄾ","ㄹㅍ":"ㄿ","ㄹㅎ":"ㅀ","ㅂㅅ":"ㅄ"};
+
+function koDecompose(word){
+  let out = "";
+  for (const ch of word){
+    const c = ch.charCodeAt(0);
+    if (c < 0xAC00 || c > 0xD7A3){ out += K_SPLIT[ch] || ch; continue; }
+    const i = c - 0xAC00, jo = i % 28, ju = Math.floor(i/28) % 21, ch0 = Math.floor(i/588);
+    for (const j of [K_CHO[ch0], K_JUNG[ju], jo ? K_JONG[jo] : ""]) if (j) out += K_SPLIT[j] || j;
+  }
+  return out;
+}
+
+/* 자모 나열을 한글 자판처럼 조합. ok=false면 완성되지 않은 글자가 있음 */
+function koCompose(jamo){
+  const sylls = []; let ok = true;
+  let cho = "", jung = "", jong = "";
+  const flush = ()=>{
+    if (cho && jung) sylls.push(String.fromCharCode(0xAC00 + (K_CHO.indexOf(cho)*21 + K_JUNG.indexOf(jung))*28 + (jong ? K_JONG.indexOf(jong) : 0)));
+    else if (cho || jung){ sylls.push(cho || jung); ok = false; }
+    cho = jung = jong = "";
+  };
+  for (const j of jamo){
+    if (K_CONS.has(j)){
+      if (!cho && !jung){ cho = j; }
+      else if (cho && !jung){ flush(); cho = j; }
+      else if (!cho && jung){ flush(); cho = j; }
+      else if (!jong){
+        if (K_JONG.indexOf(j) > 0) jong = j; else { flush(); cho = j; }
+      } else {
+        const jj = K_J_JOIN[jong + j];
+        if (jj) jong = jj; else { flush(); cho = j; }
+      }
+    } else if (K_VOWELS.has(j)){
+      if (cho && !jung){ jung = j; }
+      else if (cho && jung && !jong){
+        const vv = K_V_JOIN[jung + j];
+        if (vv) jung = vv; else { flush(); jung = j; }
+      }
+      else if (cho && jung && jong){
+        // 받침을 다음 글자 초성으로 넘김 (겹받침이면 뒤쪽만)
+        const sp = K_SPLIT[jong];
+        let move;
+        if (sp){ jong = sp[0]; move = sp[1]; }
+        else { move = jong; jong = ""; }
+        flush(); cho = move; jung = j;
+      }
+      else { flush(); jung = j; }
+    } else { flush(); sylls.push(j); ok = false; }
+  }
+  flush();
+  return {text: sylls.join(""), ok};
+}
+function koValid(jamo){ const r = koCompose(jamo); return r.ok; }
+
 let DICT = null;            // Set — 단어 검사용 사전
 let dictFailed = false;
 
@@ -321,7 +393,7 @@ function send(msg){
 const H = {
   players: new Map(),   // id -> {name, score, conn, joinedAt}
   phase: "lobby",
-  settings: { len:5, time:180, mode:"all" },
+  settings: { lang:"en", len:5, time:180, mode:"all" },
   roundNo: 0,
   round: null,
   chat: [],
@@ -356,9 +428,10 @@ function hostState(forId){
       };
     }
     round = {
-      len: r.len, maxRows: r.maxRows, boards,
+      len: r.len, lang: r.lang, maxRows: r.maxRows, boards,
       remaining: r.deadline ? Math.max(0, r.deadline - Date.now()) : null,
       answer: H.phase==="result" ? r.answer : null,
+      word: H.phase==="result" ? r.word : null,
       results: H.phase==="result" ? r.results : null
     };
   }
@@ -387,24 +460,25 @@ function sendTo(id, msg){
 }
 
 function hostStartRound(){
-  const len = H.settings.len;
-  const list = ANSWERS[len];
-  let pool = list.filter(w=>!H.used.has(w));
-  if (!pool.length){ list.forEach(w=>H.used.delete(w)); pool = list.slice(); }
-  const answer = pool[Math.floor(Math.random()*pool.length)];
-  H.used.add(answer);
+  const len = H.settings.len, lang = H.settings.lang;
+  const list = (lang==="ko" ? ANSWERS_KO : ANSWERS)[len];
+  let pool = list.filter(w=>!H.used.has(lang+w));
+  if (!pool.length){ list.forEach(w=>H.used.delete(lang+w)); pool = list.slice(); }
+  const word = pool[Math.floor(Math.random()*pool.length)];
+  H.used.add(lang+word);
+  const answer = lang==="ko" ? koDecompose(word) : word;   // 한국어는 자모 단위로 채점
   const boards = {};
   for (const id of H.players.keys()) boards[id] = {pats:[], words:[], solved:false, done:false, typing:0, finishMs:null};
   H.roundNo++;
   H.round = {
-    answer, len, maxRows: MAX_ROWS[len], boards, startedAt: Date.now(),
+    answer, word, lang, len, maxRows: MAX_ROWS[len], boards, startedAt: Date.now(),
     deadline: H.settings.time ? Date.now() + H.settings.time*1000 : null,
     order: [], results: null
   };
   H.phase = "playing";
   clearTimeout(H.timer);
   if (H.round.deadline) H.timer = setTimeout(()=>hostEndRound("time"), H.settings.time*1000 + 200);
-  sysMsg(`${H.roundNo}라운드 시작! ${len}글자 단어예요.`);
+  sysMsg(`${H.roundNo}라운드 시작! ` + (lang==="ko" ? `한국어 · 자모 ${len}칸이에요.` : `영어 · ${len}글자 단어예요.`));
   hostBroadcastState();
 }
 
@@ -434,7 +508,7 @@ function hostEndRound(reason){
   r.results = results;
   H.phase = "result";
   const msg = reason==="time" ? "시간 종료!" : reason==="first" ? "첫 정답자가 나왔어요!" : "모두 끝났어요!";
-  sysMsg(`${msg} 정답은 ${r.answer.toUpperCase()}`);
+  sysMsg(`${msg} 정답은 ${r.lang==="ko" ? r.word : r.word.toUpperCase()}`);
   hostBroadcastState();
 }
 
@@ -466,6 +540,7 @@ function hostHandle(id, msg, conn){
       if ([5,6,7,8].includes(s.len)) H.settings.len = s.len;
       if ([0,120,180,300].includes(s.time)) H.settings.time = s.time;
       if (["all","first"].includes(s.mode)) H.settings.mode = s.mode;
+      if (["en","ko"].includes(s.lang)) H.settings.lang = s.lang;
       hostBroadcastState();
       break;
     }
@@ -494,8 +569,10 @@ function hostHandle(id, msg, conn){
       const b = r.boards[id];
       if (!b) return sendTo(id,{t:"err", text:"이번 라운드는 관전 중이에요"});
       if (b.done) return;
-      const w = String(msg.word||"").toLowerCase();
-      if (w.length!==r.len || !/^[a-z]+$/.test(w)) return sendTo(id,{t:"err", text:`${r.len}글자 영어 단어를 입력하세요`});
+      const w = r.lang==="ko" ? String(msg.word||"") : String(msg.word||"").toLowerCase();
+      if (r.lang==="ko"){
+        if (w.length!==r.len || ![...w].every(c=>K_ALL.has(c)) || !koValid(w)) return sendTo(id,{t:"err", text:`자모 ${r.len}칸으로 완성된 단어를 입력하세요`});
+      } else if (w.length!==r.len || !/^[a-z]+$/.test(w)) return sendTo(id,{t:"err", text:`${r.len}글자 영어 단어를 입력하세요`});
       const pat = evaluate(w, r.answer);
       b.words.push(w); b.pats.push(pat); b.typing = 0;
       if (pat === "g".repeat(r.len)){
@@ -797,8 +874,9 @@ function renderAll(revealRow){
 
 function renderHeader(){
   const rc = $("roundChip");
-  if (S.roundNo>0 && S.round){ rc.classList.remove("hidden"); rc.innerHTML = `${S.roundNo}라운드 · <b>${S.round.len}글자</b>`; }
+  if (S.roundNo>0 && S.round){ rc.classList.remove("hidden"); rc.innerHTML = `${S.roundNo}라운드 · <b>${S.round.lang==="ko" ? "한국어 "+S.round.len+"칸" : "영어 "+S.round.len+"글자"}</b>`; }
   else rc.classList.add("hidden");
+  $("dictChip").classList.toggle("hidden", !!(S.round && S.round.lang==="ko" && S.phase==="playing"));
   tick();
 }
 function tick(){
@@ -823,7 +901,9 @@ function segHTML(key, opts, val, enabled){
 function settingsHTML(){
   const me = myId===S.hostId, s = S.settings;
   return `
-    <div class="opt"><div class="lb">단어 길이</div>${segHTML("len",[[5,"5글자"],[6,"6글자"],[7,"7글자"],[8,"8글자"]], s.len, me)}</div>
+    <div class="opt"><div class="lb">언어</div>${segHTML("lang",[["en","🇺🇸 영어"],["ko","🇰🇷 한국어"]], s.lang, me)}</div>
+    <div class="opt"><div class="lb">${s.lang==="ko" ? "자모 칸 수" : "단어 길이"}</div>${segHTML("len",[5,6,7,8].map(n=>[n, s.lang==="ko" ? n+"칸" : n+"글자"]), s.len, me)}
+      ${s.lang==="ko" ? `<p class="hint">한국어는 자모 단위로 맞혀요. 예) 사과 = ㅅ ㅏ ㄱ ㅗ ㅏ (5칸) · 닭갈비 = ㄷ ㅏ ㄹ ㄱ ㄱ ㅏ ㄹ ㅂ ㅣ (9칸)<br>겹모음(ㅘ)·겹받침(ㄺ)은 나눠서 치고, 쌍자음(ㄲ ㄸ ㅃ ㅆ ㅉ)은 한 칸이에요. 사전 검사는 없고 글자가 완성되면 입력돼요.</p>` : ""}</div>
     <div class="opt"><div class="lb">제한 시간</div>${segHTML("time",[[0,"없음"],[120,"2분"],[180,"3분"],[300,"5분"]], s.time, me)}</div>
     <div class="opt"><div class="lb">라운드 방식</div>${segHTML("mode",[["all","모두 끝날 때까지"],["first","첫 정답자 나오면 종료"]], s.mode, me)}</div>
     <p class="hint">점수: 1등 +3 · 2등 +2 · 그 밖에 맞히면 +1 · 기회는 ${MAX_ROWS[s.len]}번</p>
@@ -865,7 +945,8 @@ function renderPanel(){
     }).join("");
     panel.innerHTML = `<h2>${S.roundNo}라운드 결과</h2>
       <div class="hint">정답</div>
-      <div class="answer">${r.answer}<a href="https://en.dict.naver.com/#/search?query=${r.answer}" target="_blank" rel="noopener">뜻 보기 ↗</a></div>
+      <div class="answer" style="${r.lang==="ko"?"letter-spacing:2px":""}">${esc(r.word||r.answer)}<a href="https://${r.lang==="ko"?"ko":"en"}.dict.naver.com/#/search?query=${encodeURIComponent(r.word||r.answer)}" target="_blank" rel="noopener">뜻 보기 ↗</a></div>
+      ${r.lang==="ko" ? `<div class="hint" style="letter-spacing:3px">${[...r.answer].join(" ")}</div>` : ""}
       <table class="rank"><tr><th>순위</th><th>이름</th><th>결과</th><th>획득</th><th>총점</th></tr>${rows}</table>
       <div class="reveal-boards">${boards}</div>
       <hr style="border:none;border-top:1px solid var(--line);margin:18px 0">
@@ -873,7 +954,7 @@ function renderPanel(){
   }
   panel.querySelectorAll(".seg button").forEach(b=>b.onclick=()=>{
     const k = b.dataset.k; let v = b.dataset.v;
-    if (k!=="mode") v = Number(v);
+    if (k==="len" || k==="time") v = Number(v);
     send({t:"settings", settings:{...S.settings, [k]:v}});
   });
   const sb = $("startBtn"); if (sb) sb.onclick = ()=>send({t:"start"});
@@ -902,8 +983,17 @@ function renderBoard(revealRow){
     html += `</div>`;
   }
   el.innerHTML = html;
+  updatePreview();
+}
+function updatePreview(){
+  const el = $("koPreview");
+  const b = S && S.round && S.round.boards[myId];
+  if (!S || S.phase!=="playing" || !b || S.round.lang!=="ko" || b.done){ el.classList.add("hidden"); return; }
+  el.classList.remove("hidden");
+  el.innerHTML = cur ? `입력 중: <b>${esc(koCompose(cur).text)}</b>` : "&nbsp;";
 }
 function updateCurRow(){
+  updatePreview();
   if (!S || !S.round) return;
   const b = S.round.boards[myId]; if (!b) return;
   const row = $("board").querySelector(`.brow[data-r="${b.pats.length}"]`);
@@ -957,11 +1047,22 @@ function renderOpps(){
 }
 
 /* ================= 키보드 ================= */
-const KB_ROWS = ["qwertyuiop","asdfghjkl","Ezxcvbnm<"];
+const KB_ROWS = {
+  en: ["qwertyuiop","asdfghjkl","Ezxcvbnm<"],
+  ko: ["ㄲㄸㅃㅆㅉㅒㅖ","ㅂㅈㄷㄱㅅㅛㅕㅑㅐㅔ","ㅁㄴㅇㄹㅎㅗㅓㅏㅣ","Eㅋㅌㅊㅍㅠㅜㅡ<"]
+};
+/* 실제 키보드 → 두벌식 자모 (한/영 상태와 상관없이 동작) */
+const KO_KEY = {q:"ㅂ",w:"ㅈ",e:"ㄷ",r:"ㄱ",t:"ㅅ",y:"ㅛ",u:"ㅕ",i:"ㅑ",o:"ㅐ",p:"ㅔ",a:"ㅁ",s:"ㄴ",d:"ㅇ",f:"ㄹ",g:"ㅎ",h:"ㅗ",j:"ㅓ",k:"ㅏ",l:"ㅣ",z:"ㅋ",x:"ㅌ",c:"ㅊ",v:"ㅍ",b:"ㅠ",n:"ㅜ",m:"ㅡ"};
+const KO_SHIFT = {q:"ㅃ",w:"ㅉ",e:"ㄸ",r:"ㄲ",t:"ㅆ",o:"ㅒ",p:"ㅖ"};
+let kbLang = null;
+function curLang(){ return (S && S.round && S.round.lang) || "en"; }
 function buildKeyboard(){
   const kb = $("kb"); kb.innerHTML = "";
-  for (const row of KB_ROWS){
+  kbLang = curLang();
+  kb.classList.toggle("kb-ko", kbLang==="ko");
+  for (const row of KB_ROWS[kbLang]){
     const r = document.createElement("div"); r.className = "kr";
+    if (kbLang==="ko" && row===KB_ROWS.ko[0]) r.classList.add("dbl");
     for (const ch of row){
       const k = document.createElement("button");
       k.className = "key";
@@ -975,6 +1076,7 @@ function buildKeyboard(){
   }
 }
 function renderKeys(){
+  if (kbLang !== curLang()) buildKeyboard();
   const st = {};
   const b = S && S.round && S.round.boards[myId];
   if (b && b.words){
@@ -997,17 +1099,18 @@ function press(k){
   if (!S || S.phase!=="playing" || !S.round) return;
   const b = S.round.boards[myId];
   if (!b || b.done || pending) return;
-  const len = S.round.len;
+  const len = S.round.len, ko = S.round.lang==="ko";
   if (k==="Enter"){
-    if (cur.length < len){ toast(`${len}글자를 채워 주세요`); shakeRow(); return; }
-    if (!isValidWord(cur)){ toast("사전에 없는 단어예요"); shakeRow(); return; }
+    if (cur.length < len){ toast(ko ? `자모 ${len}칸을 채워 주세요` : `${len}글자를 채워 주세요`); shakeRow(); return; }
+    if (ko ? !koValid(cur) : !isValidWord(cur)){ toast(ko ? "글자가 완성되지 않았어요 (예: ㅏ만 따로 있음)" : "사전에 없는 단어예요"); shakeRow(); return; }
     if (b.words && b.words.includes(cur)){ toast("이미 입력한 단어예요"); shakeRow(); return; }
     pending = true;
     send({t:"guess", word:cur});
     return;
   }
   if (k==="Backspace"){ if (cur.length){ cur = cur.slice(0,-1); updateCurRow(); sendTyping(); } return; }
-  if (/^[a-z]$/.test(k) && cur.length < len){ cur += k; updateCurRow(); sendTyping(); }
+  const okKey = ko ? K_ALL.has(k) : /^[a-z]$/.test(k);
+  if (okKey && cur.length < len){ cur += k; updateCurRow(); sendTyping(); }
 }
 
 document.addEventListener("keydown", e=>{
@@ -1017,7 +1120,12 @@ document.addEventListener("keydown", e=>{
   if (e.ctrlKey || e.metaKey || e.altKey) return;
   // 한글 입력 상태여도 동작하도록 e.code 사용
   const m = /^Key([A-Z])$/.exec(e.code || "");
-  if (m){ e.preventDefault(); press(m[1].toLowerCase()); }
+  if (m){
+    e.preventDefault();
+    const l = m[1].toLowerCase();
+    if (curLang()==="ko") press((e.shiftKey && KO_SHIFT[l]) || KO_KEY[l]);
+    else press(l);
+  }
   else if (e.key==="Enter" || e.code==="Enter" || e.code==="NumpadEnter"){ e.preventDefault(); press("Enter"); }
   else if (e.key==="Backspace"){ e.preventDefault(); press("Backspace"); }
 });
