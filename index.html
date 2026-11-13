@@ -263,6 +263,11 @@ function evaluate(guess, answer){
 
 /* ================= 공통 상태 ================= */
 const PREFIX = "wordle-duel-v1-";
+const PEER_OPTS = { config: { iceServers: [
+  { urls: ["stun:stun.l.google.com:19302","stun:stun1.l.google.com:19302","stun:stun.cloudflare.com:3478"] },
+  { urls: ["turn:eu-0.turn.peerjs.com:3478","turn:us-0.turn.peerjs.com:3478"], username: "peerjs", credential: "peerjsp" }
+]}};
+
 let peer = null, hostConn = null;
 let isHost = false, myId = null, roomCode = null;
 let S = null;                // 서버(방장)가 보내준 최신 상태
@@ -285,6 +290,25 @@ function genCode(){
   for(let i=0;i<5;i++) s += a[Math.floor(Math.random()*a.length)];
   return s;
 }
+
+
+/* 한글 자판 상태로 친 방 코드 → 영문 키로 변환 (예: ㅏ7ㅂ2ㅡ → K7Q2M) */
+const JAMO_KEY = {"ㅂ":"q","ㅈ":"w","ㄷ":"e","ㄱ":"r","ㅅ":"t","ㅛ":"y","ㅕ":"u","ㅑ":"i","ㅐ":"o","ㅔ":"p","ㅁ":"a","ㄴ":"s","ㅇ":"d","ㄹ":"f","ㅎ":"g","ㅗ":"h","ㅓ":"j","ㅏ":"k","ㅣ":"l","ㅋ":"z","ㅌ":"x","ㅊ":"c","ㅍ":"v","ㅠ":"b","ㅜ":"n","ㅡ":"m",
+ "ㅃ":"q","ㅉ":"w","ㄸ":"e","ㄲ":"rr","ㅆ":"tt","ㅒ":"o","ㅖ":"p","ㅘ":"hk","ㅙ":"ho","ㅚ":"hl","ㅝ":"nj","ㅞ":"np","ㅟ":"nl","ㅢ":"ml",
+ "ㄳ":"rt","ㄵ":"sw","ㄶ":"sg","ㄺ":"fr","ㄻ":"fa","ㄼ":"fq","ㄽ":"ft","ㄾ":"fx","ㄿ":"fv","ㅀ":"fg","ㅄ":"qt"};
+const CHO="ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ", JUNG="ㅏㅐㅑㅒㅓㅔㅕㅖㅗㅘㅙㅚㅛㅜㅝㅞㅟㅠㅡㅢㅣ", JONG=" ㄱㄲㄳㄴㄵㄶㄷㄹㄺㄻㄼㄽㄾㄿㅀㅁㅂㅄㅅㅆㅇㅈㅊㅋㅌㅍㅎ";
+function hangulToKeys(str){
+  let out = "";
+  for (const ch of str){
+    const c = ch.charCodeAt(0);
+    if (c>=0xAC00 && c<=0xD7A3){
+      const i = c-0xAC00, jo = i%28, ju = Math.floor(i/28)%21, ch0 = Math.floor(i/588);
+      out += (JAMO_KEY[CHO[ch0]]||"") + (JAMO_KEY[JUNG[ju]]||"") + (jo ? (JAMO_KEY[JONG[jo]]||"") : "");
+    } else out += JAMO_KEY[ch] || ch;
+  }
+  return out;
+}
+function normCode(v){ return hangulToKeys(v).toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,5); }
 
 /* 메시지 보내기 (방장이면 자기 자신에게 바로 처리) */
 function send(msg){
@@ -521,7 +545,7 @@ function createRoom(tries=0){
   const name = getName(); if (!name || !checkPeerLib()) return;
   setEntryBusy(true, "방을 만드는 중…");
   const code = genCode();
-  const pr = new Peer(PREFIX + code);
+  const pr = new Peer(PREFIX + code, PEER_OPTS);
   pr.on("open", id=>{
     peer = pr; isHost = true; myId = id; roomCode = code;
     H.players.set(myId, {name, score:0, conn:null, joinedAt:Date.now()});
@@ -545,15 +569,19 @@ function createRoom(tries=0){
 
 function joinRoom(){
   const name = getName(); if (!name || !checkPeerLib()) return;
-  const code = $("codeInp").value.trim().toUpperCase();
+  const code = normCode($("codeInp").value); $("codeInp").value = code;
   if (code.length!==5){ $("entryMsg").textContent = "5자리 방 코드를 입력하세요"; return; }
   setEntryBusy(true, "방에 연결하는 중…");
-  const pr = new Peer();
+  const pr = new Peer(PEER_OPTS);
   let opened = false;
   const fail = (m)=>{ if (opened) return; try{pr.destroy();}catch(e){} setEntryBusy(false, m); };
-  const to = setTimeout(()=>fail("연결 시간이 초과됐어요. 코드를 확인하거나 다시 시도해 주세요."), 15000);
+  let found = false;
+  const to = setTimeout(()=>fail(found
+    ? "방은 찾았는데 네트워크가 막혀서 연결을 못 했어요. 와이파이 ↔ 데이터를 바꿔서 다시 해 보세요."
+    : "연결 시간이 초과됐어요. 방장이 게임 창을 켜 두고 있는지 확인해 주세요."), 20000);
   pr.on("open", ()=>{
     const conn = pr.connect(PREFIX + code, {reliable:true});
+    conn.on("iceStateChanged", st=>{ found = true; if (st==="failed") { clearTimeout(to); fail("방은 찾았는데 네트워크가 막혀서 연결을 못 했어요. 와이파이 ↔ 데이터를 바꿔서 다시 해 보세요."); } });
     conn.on("open", ()=>{
       opened = true; clearTimeout(to);
       peer = pr; hostConn = conn; roomCode = code;
@@ -564,7 +592,7 @@ function joinRoom(){
   });
   pr.on("disconnected", ()=>{ try{ pr.reconnect(); }catch(e){} });
   pr.on("error", e=>{
-    if (e.type==="peer-unavailable"){ clearTimeout(to); fail("그 코드의 방을 찾을 수 없어요."); }
+    if (e.type==="peer-unavailable"){ clearTimeout(to); fail(`${code} 방을 찾을 수 없어요. 코드가 맞는지, 방장이 게임 창을 켜 두고 있는지 확인해 주세요.`); }
     else if (!opened){ clearTimeout(to); fail("연결 오류: " + e.type); }
   });
 }
@@ -880,6 +908,8 @@ document.addEventListener("keydown", e=>{
 $("createBtn").onclick = ()=>createRoom();
 $("joinBtn").onclick = joinRoom;
 $("codeInp").addEventListener("keydown", e=>{ if (e.key==="Enter" && !e.isComposing) joinRoom(); });
+$("codeInp").addEventListener("compositionend", e=>{ const v = normCode(e.target.value); setTimeout(()=>{ e.target.value = v; }, 0); });
+$("codeInp").addEventListener("blur", e=>{ e.target.value = normCode(e.target.value); });
 $("nameInp").addEventListener("keydown", e=>{ if (e.key==="Enter" && !e.isComposing){ $("codeInp").value.trim() ? joinRoom() : createRoom(); } });
 $("chatForm").addEventListener("submit", e=>{
   e.preventDefault();
@@ -900,7 +930,7 @@ window.addEventListener("beforeunload", ()=>{ try{ peer && peer.destroy(); }catc
   const saved = load("wd_name"); if (saved) $("nameInp").value = saved;
   const q = new URLSearchParams(location.search).get("room");
   if (q){
-    $("codeInp").value = q.toUpperCase().slice(0,5);
+    $("codeInp").value = normCode(q);
     $("createBtn").classList.remove("primary");
     $("joinBtn").classList.add("primary");
     $("entryMsg").textContent = "초대받은 방이에요. 닉네임을 쓰고 ‘참가’를 누르세요.";
